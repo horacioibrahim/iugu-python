@@ -54,10 +54,10 @@ from iugu.customer import IuguCustomer
 client = IuguCustomer(api_mode_test=True,
                       api_token='YOUR API KEY',
                       email='YOUR EMAIL')
-customer = consumer.create(email='your_customer@example.com')
+customer = client.create(email='your_customer@example.com')
  => https://api.iugu.com/v1/customers
 ```
-Now you can to retrieve customer with set()
+Now you can to retrieve customer
 ```
 client.get(customer_id='ID')
 ```
@@ -65,16 +65,16 @@ You can edit existent customer
 ```
 client.set(CUSTOMER_ID, name="Sub Zero Wins")
 ```
-Or you can use save()
+Or you can to use save()
 ```
 customer.name = "Sub Zero Wins"
 customer.save()
 ```
 To remove or delete customer
 ```
-client..delete(CONSUMER_ID)
+client.delete(CONSUMER_ID) # by id
  or
-customer.remove()
+customer.remove() # by current instance
 ```
 ### Operations with lists of customer ###
 Get all customer
@@ -83,15 +83,18 @@ from iugu.customer import IuguCustomer
 client = IuguCustomer(api_mode_test=True,
                       api_token='YOUR API KEY',
                       email='YOUR EMAIL')
-client.getitems([limit, skip, query, sort, created_at_from, created_at_to,
-                updated_since])
+# your flavor of options
+# client.getitems([limit, skip, query, sort, created_at_from, created_at_to,
+#                updated_since])
 
-Use one option per time:
-client.getitems(limit=30)
-client.getitems(skip=14) # useful for pagination
-client.getitems(sort="-name") # sort by field name (DESC)
-client.getitems(sort="name") # sort by field name (ASC)
+Use one option per time. Samples:
+client.getitems(limit=30) # Get most recent (latest) 30 customers
+client.getitems(skip=14) # Skip X customers. uUeful for pagination
+client.getitems(sort="-name") # Sort by field >>name<< (descending)
+client.getitems(sort="name") # Sort by field >>name<< (ascending)
 client.getitems(updated_since="2014-06-05T15:02:40-03:00")
+
+ => http://iugu.com/referencias/api#listar-os-clientes
 ```
 
 ### References ###
