@@ -1,4 +1,4 @@
-Iugu python SDK
+Iugu python API
 ============================================
 
 Iugu python compatible client for Iugu API v1
