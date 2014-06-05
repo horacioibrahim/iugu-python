@@ -6,7 +6,6 @@ settings_dev.py
 bin
 build
 include
-lib
 local
 man
 share
