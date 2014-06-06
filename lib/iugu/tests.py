@@ -9,7 +9,7 @@ from hashlib import md5
 from types import StringType
 
 # python-iugu package modules
-import merchant, customer, config
+import merchant, customer, config, errors
 
 
 class TestMerchant(unittest.TestCase):
@@ -266,11 +266,20 @@ class TestCustomerPayments(unittest.TestCase):
         self.customer = self.client.create()
 
     def tearDown(self):
-        self.customer.remove()
+        pass #self.customer.remove()
 
     def test_create_payment_method(self):
-        print self.customer.id
-        self.customer.payment.create(description="New payment method")
+        instance_payment = self.customer.payment.create(description="New payment method",
+                                     number='4111111111111111',
+                                     verification_value=123,
+                                     first_name="Joao", last_name="Maria",
+                                     month=12, year=2014)
+
+        self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
+
+    def test_create_payment_method_raise_general(self):
+        self.assertRaises(errors.IuguGeneralException, self.customer.payment.create,
+                          description="New payment method")
 
 
 if __name__ == '__main__':

@@ -1,11 +1,8 @@
 # coding: utf-8
 __author__ = 'horacioibrahim'
 
-from urllib import urlencode
-from httplib import HTTPSConnection
-from json import load as json_load
 # python-iugu package modules
-import base, config
+import base, config, errors
 
 class IuguCustomer(base.IuguApi):
 
@@ -27,6 +24,7 @@ class IuguCustomer(base.IuguApi):
         self.updated_at = options.get("updated_at")
         self.custom_variables = options.get("custom_variables")
         self.conn = base.IuguRequests()
+        self.payment = IuguPaymentMethod(self)
 
     def create(self, name=None, notes=None, email=None, custom_variables=[]):
         """Creates a customer
@@ -67,14 +65,6 @@ class IuguCustomer(base.IuguApi):
         data.append(("api_token", self.api_token))
         urn = "/v1/customers/" + str(customer_id)
         customer = self.conn.get(urn, data)
-
-        try:
-            errors = customer['errors']
-        except:
-            errors = None
-
-        if errors:
-            raise TypeError("Customer not found")
 
         return IuguCustomer(**customer)
 
@@ -128,15 +118,9 @@ class IuguCustomer(base.IuguApi):
         urn = "/v1/customers/" + str(_customer_id)
         customer = self.conn.delete(urn, data)
 
-        try:
-            errors = customer['errors']
-        except:
-            errors = None
-
-        if errors:
-            raise TypeError("Customer not found")
-
         return IuguCustomer(**customer)
+
+    remove = delete # remove for semantic of API and delete for HTTP verbs
 
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None):
@@ -180,4 +164,132 @@ class IuguCustomer(base.IuguApi):
 
         return customers_objects
 
-    remove = delete # remove for semantic of API and delete for HTTP verbs
+
+class IuguPaymentMethod(object):
+
+    def __init__(self, customer, item_type="credit_card", **kwargs):
+        # self.customer_id = kwargs.get('customer_id')
+        self.customer = customer
+        self.description = kwargs.get('description')
+        self.item_type = item_type # TODO **load?
+        self.token = kwargs.get('token') # data credit card token
+        self.set_as_default = kwargs.get('set_as_default')
+        self.id = kwargs.get('id')
+
+        # constructor payment
+        data = kwargs.get('data')
+        if data and isinstance(data, dict):
+            self.payment_data = PaymentTypeCreditCard(**data)
+        else:
+            self.payment_data = PaymentTypeCreditCard()
+
+        self.conn = base.IuguRequests()
+
+    def create(self, customer_id=None, description=None, number=None,
+               verification_value=None, first_name=None, last_name=None,
+               month=None, year=None):
+        """ Creates a payment method for a client
+
+        :param customer_id: id of customer. You can pass in init or here
+        :param description: required to create method. You can pass in init or here
+
+        TODO: By API data is optional, but is not real behavior. If confirmed the
+        required fields as number, verification_value, first_name, last_name,
+        month and year we can put as required args.
+        """
+        data = []
+
+        if customer_id:
+            self.customer_id = customer_id
+
+        if description:
+            self.description = description
+
+        assert self.description is not None, "description is required"
+        assert isinstance(self.customer, IuguCustomer), "Customer invalid."
+
+        if self.customer.id:
+            urn = "/v1/customers/{customer_id}/payment_methods" \
+                            .format(customer_id=str(self.customer.id))
+        else:
+            raise errors.IuguPaymentMethodException
+
+        # mounting data...
+        data.append(("api_token", self.customer.api_token))
+        data.append(("description", self.description))
+        data.append(("item_type", self.item_type ))
+
+        if number:
+            self.payment_data.number = number
+
+        if verification_value:
+            self.payment_data.verification_value = verification_value
+
+        if first_name:
+            self.payment_data.first_name = first_name
+
+        if last_name:
+            self.payment_data.last_name = last_name
+
+        if month:
+            self.payment_data.month = month
+
+        if year:
+            self.payment_data.year = year
+
+        if self.payment_data.is_valid():
+            # It's possible create payment method without credit card data.
+            # Therefore this check is need.
+            payment = self.payment_data.to_data()
+            data.extend(payment)
+
+        response = self.conn.post(urn, data)
+
+        return IuguPaymentMethod(self.customer, **response)
+
+        #payment_method = self.conn.get(urn, data)
+
+class PaymentTypeCreditCard(object):
+
+    def __init__(self, **kwargs):
+        self.number = kwargs.get('number')
+        self.verification_value = kwargs.get('verification_value')
+        self.first_name = kwargs.get('first_name')
+        self.last_name = kwargs.get('last_name')
+        self.month = kwargs.get('month')
+        self.year = kwargs.get('year')
+        self.display_number = kwargs.get('display_number')
+        self.token = kwargs.get('token')
+        self.brand = kwargs.get('brand')
+
+    def is_valid(self):
+        if self.number and self.verification_value and self.first_name and \
+            self.last_name and self.month and self.year:
+            return True
+        else:
+            return False
+
+    def to_data(self):
+        """
+        Returns a list of tuples with ("data[field]", value). Use it to
+        return a data that will extend the data params in request.
+        """
+        # control to required fields
+        if self.number and self.verification_value and self.first_name and \
+            self.last_name and self.month and self.year:
+            pass
+        else:
+            blanks = [ k for k, v in self.__dict__.items() if v is None]
+            raise TypeError("All fields required to %s. Blank fields given %s" %
+                            (self.__class__, blanks))
+        data = []
+        data.append(("data[number]", self.number))
+        data.append(("data[verification_value]", self.verification_value))
+        data.append(("data[first_name]", self.first_name))
+        data.append(("data[last_name]", self.last_name))
+        data.append(("data[month]", self.month))
+        data.append(("data[year]", self.year))
+
+        return data
+
+
