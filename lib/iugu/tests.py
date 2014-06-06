@@ -9,43 +9,38 @@ from hashlib import md5
 from types import StringType
 
 # python-iugu package modules
-import merchant, customer
+import merchant, customer, config
 
 
 class TestMerchant(unittest.TestCase):
 
     def setUp(self):
-        self.API_TOKEN_TEST = "3881a8eded982f25e12669b202b2b5df"
-        self.EMAIL_CUSTOMER  = "horacioibrahim@gmail.com"
+        self.API_TOKEN_TEST = config.API_TOKEN_TEST
+        self.EMAIL_CUSTOMER  = config.ACCOUNT_EMAIL
+        self.client = merchant.IuguMerchant(account_id=config.ACCOUNT_ID,
+                                       api_mode_test=True,
+                                       api_token=self.API_TOKEN_TEST)
 
     def test_create_payment_token_is_test(self):
-        client = merchant.IuguMerchant(account_id="25dfe5de-f86a-4507-89ed-922796bc05a8",
-                                       api_mode_test=True)
-        response = client.create_payment_token('4111111111111111', 'JA', 'Silva',
+        response = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
                                                '12', '2010', '123')
         self.assertTrue(response.is_test)
 
     def test_create_payment_token(self):
-        client = merchant.IuguMerchant(account_id="25dfe5de-f86a-4507-89ed-922796bc05a8",
-                                       api_mode_test=True)
-        response = client.create_payment_token('4111111111111111', 'JA', 'Silva',
+        response = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
                                                '12', '2010', '123')
         self.assertEqual(response.status, 200)
 
     def test_create_charge_credit_card(self):
         item = merchant.Item("Produto My Test", 1, 10000)
-        client = merchant.IuguMerchant(account_id="25dfe5de-f86a-4507-89ed-922796bc05a8",
-                                       api_mode_test=True, api_token=self.API_TOKEN_TEST)
-        token = client.create_payment_token('4111111111111111', 'JA', 'Silva',
+        token = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
                                                '12', '2010', '123')
-        charge = client.create_charge(self.EMAIL_CUSTOMER, item, token=token.id)
+        charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token.id)
         self.assertEqual(charge.is_success(), True)
 
     def test_create_charge_blank_slip(self):
         item = merchant.Item("Produto Blank Slip", 1, 1000)
-        client = merchant.IuguMerchant(account_id="25dfe5de-f86a-4507-89ed-922796bc05a8",
-                                       api_mode_test=True, api_token=self.API_TOKEN_TEST)
-        charge = client.create_charge(self.EMAIL_CUSTOMER, item)
+        charge = self.client.create_charge(self.EMAIL_CUSTOMER, item)
         self.assertEqual(charge.is_success(), True)
 
 
@@ -56,7 +51,7 @@ class TestCustomer(unittest.TestCase):
         number = randint(1, 50)
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
-        self.API_TOKEN_TEST = "3881a8eded982f25e12669b202b2b5df"
+        self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
 
 
@@ -139,7 +134,7 @@ class TestCustomerLists(unittest.TestCase):
         number = randint(1, 50)
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
-        self.API_TOKEN_TEST = "3881a8eded982f25e12669b202b2b5df"
+        self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
 
         self.c = customer.IuguCustomer(api_mode_test=True,
@@ -254,6 +249,29 @@ class TestCustomerLists(unittest.TestCase):
         sleep(1)
         customers = self.c.getitems(updated_since=self.three.created_at)
         self.assertEqual(customers[0].id, self.three.id)
+
+
+class TestCustomerPayments(unittest.TestCase):
+
+    def setUp(self):
+        hash_md5 = md5()
+        number = randint(1, 50)
+        hash_md5.update(str(number))
+        email = "{email}@test.com".format(email=hash_md5.hexdigest())
+        self.API_TOKEN_TEST = config.API_TOKEN_TEST
+        self.random_user_email = email
+        self.client = customer.IuguCustomer(api_mode_test=True,
+                                            api_token=self.API_TOKEN_TEST,
+                                            email="test@testmail.com")
+        self.customer = self.client.create()
+
+    def tearDown(self):
+        self.customer.remove()
+
+    def test_create_payment_method(self):
+        print self.customer.id
+        self.customer.payment.create(description="New payment method")
+
 
 if __name__ == '__main__':
         unittest.main()
