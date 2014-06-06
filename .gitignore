@@ -3,6 +3,7 @@ settings_dev.py
 .pydevproject
 .project
 *.bak
+config.py
 bin
 build
 include
