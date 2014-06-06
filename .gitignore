@@ -3,7 +3,7 @@ settings_dev.py
 .pydevproject
 .project
 *.bak
-config.py
+lib/iugu/config.py
 bin
 build
 include
