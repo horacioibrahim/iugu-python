@@ -42,7 +42,7 @@ class IuguRequests(IuguApi):
             err = None
 
         if err:
-            raise errors.IuguGeneralException
+            raise errors.IuguGeneralException(value=err)
         else:
             return results
 

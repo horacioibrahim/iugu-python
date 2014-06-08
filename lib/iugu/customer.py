@@ -1,4 +1,4 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
 __author__ = 'horacioibrahim'
 
 # python-iugu package modules
@@ -63,16 +63,18 @@ class IuguCustomer(base.IuguApi):
 
         # data fields of charge
         data.append(("api_token", self.api_token))
-        urn = "/v1/customers/" + str(customer_id)
+        urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
         customer = self.conn.get(urn, data)
+        instance = IuguCustomer(**customer)
+        instance.api_token = self.api_token
 
-        return IuguCustomer(**customer)
+        return instance
 
     def set(self, customer_id, name=None, notes=None): #TODO: custom_variables=[]
         """ Updates an customer that already exists
         """
         data = []
-        urn = "/v1/customers/" + str(customer_id)
+        urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
         data.append(("api_token", self.api_token))
 
         if name:
@@ -125,7 +127,7 @@ class IuguCustomer(base.IuguApi):
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None):
         data = []
-        urn = urn = "/v1/customers/"
+        urn = "/v1/customers/"
         data.append(("api_token", self.api_token))
 
         # Set options
@@ -168,7 +170,9 @@ class IuguCustomer(base.IuguApi):
 class IuguPaymentMethod(object):
 
     def __init__(self, customer, item_type="credit_card", **kwargs):
-        # self.customer_id = kwargs.get('customer_id')
+        assert isinstance(customer, IuguCustomer), "Customer invalid."
+
+        self.customer_id = kwargs.get('customer_id') # useful create Payment by customer ID
         self.customer = customer
         self.description = kwargs.get('description')
         self.item_type = item_type # TODO **load?
@@ -199,16 +203,18 @@ class IuguPaymentMethod(object):
         """
         data = []
 
+        # check if customer_id
         if customer_id:
             self.customer_id = customer_id
+        else:
+            self.customer_id = self.customer.id
 
         if description:
             self.description = description
 
         assert self.description is not None, "description is required"
-        assert isinstance(self.customer, IuguCustomer), "Customer invalid."
 
-        if self.customer.id:
+        if self.customer_id:
             urn = "/v1/customers/{customer_id}/payment_methods" \
                             .format(customer_id=str(self.customer.id))
         else:
@@ -247,7 +253,58 @@ class IuguPaymentMethod(object):
 
         return IuguPaymentMethod(self.customer, **response)
 
-        #payment_method = self.conn.get(urn, data)
+    def get(self, payment_id, customer_id=None):
+        """ Returns a payment method of an user
+        """
+        data = []
+        payment_id = str(payment_id)
+
+        if customer_id is None:
+            customer_id = self.customer.id
+
+        urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
+                format(customer_id=customer_id, payment_id=payment_id)
+        data.append(("api_token", self.customer.api_token))
+        response = self.conn.get(urn, data)
+
+        return IuguPaymentMethod(self.customer, **response)
+
+    def set(self, payment_id, description, customer_id=None):
+        # TODO: if instance of self already pyament_id
+        data = []
+        data.append(("api_token", self.customer.api_token))
+        data.append(("description", description))
+
+        if customer_id is None:
+            customer_id = self.customer.id
+
+        urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
+                format(customer_id=customer_id, payment_id=payment_id)
+        response = self.conn.put(urn, data)
+
+        return IuguPaymentMethod(self.customer, **response)
+
+    def save(self):
+        return self.set(self.id, self.description)
+
+    def delete(self, payment_id, customer_id=None):
+        # TODO: if instance of self already pyament_id
+        data = []
+        data.append(("api_token", self.customer.api_token))
+
+        if customer_id is None:
+            customer_id = self.customer.id
+
+        urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
+                format(customer_id=customer_id, payment_id=payment_id)
+
+        response = self.conn.delete(urn, data)
+
+        return IuguPaymentMethod(self.customer, **response)
+
+    def remove(self):
+        return self.delete(self.id)
+
 
 class PaymentTypeCreditCard(object):
 
