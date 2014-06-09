@@ -9,7 +9,7 @@ from hashlib import md5
 from types import StringType
 
 # python-iugu package modules
-import merchant, customer, config, errors
+import merchant, customer, config, invoices, errors
 
 
 class TestMerchant(unittest.TestCase):
@@ -282,9 +282,10 @@ class TestCustomerPayments(unittest.TestCase):
 
     def test_create_payment_method_existent_user_by_get(self):
         """ Test create payment method of existent user returned by get()
-        of IuguCustomer
+        of IuguCustomer.
         """
         new_customer = self.client.create()
+        # Test with user from get()
         existent_customer = self.client.get(new_customer.id)
 
         instance_payment = existent_customer.payment.create(description="New payment method",
@@ -299,6 +300,7 @@ class TestCustomerPayments(unittest.TestCase):
         """ Test create payment method of existent user returned by getitems()
         of IuguCustomer
         """
+        # Test with user from getitems()
         customers = self.client.getitems()
         c_0 = customers[0]
         instance_payment = c_0.payment.create(description="New payment method",
@@ -309,7 +311,7 @@ class TestCustomerPayments(unittest.TestCase):
 
         self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
 
-    def test_create_payment_method_existent_user_by_instance(self):
+    def test_create_payment_method_non_existent_user_by_instance(self):
         """ Test create payment method to instance's user before it was
         created in API. So without ID.
         """
@@ -322,7 +324,7 @@ class TestCustomerPayments(unittest.TestCase):
                           last_name="Maria", month=12, year=2016)
 
     def test_create_payment_method_raise_general(self):
-        # Create payment method without data. API returns error.
+        # Create payment method without data{} where API returns error.
         self.assertRaises(errors.IuguGeneralException, self.customer.payment.create,
                           description="New payment method")
 
@@ -333,6 +335,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
+        # two args passed
         payment = self.client.payment.get(instance_payment.id,
                                           customer_id=self.customer.id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
@@ -344,6 +347,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
+        # one arg passed. user is implicit to customer
         payment = self.customer.payment.get(instance_payment.id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
 
@@ -354,6 +358,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
+        # two args passed
         payment = self.client.payment.set(instance_payment.id, "New Card Name",
                                           customer_id=self.customer.id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
@@ -367,6 +372,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
+        # one arg passed. user is implicit to customer
         payment = self.customer.payment.set(instance_payment.id, "New Card Name")
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
@@ -381,6 +387,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
         instance_payment.description = "New Card Name"
+        # no args passed. To payment method instance this is implicit
         payment = instance_payment.save()
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
@@ -395,9 +402,97 @@ class TestCustomerPayments(unittest.TestCase):
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
         instance_payment.remove()
-        payment_test = self.customer.payment.get
+        # Try get payment already removed
+        payment_test = self.customer.payment.get # copy method
         self.assertRaises(errors.IuguGeneralException, payment_test,
                                 instance_payment.id)
+
+    def test_set_payment_remove_less_id(self):
+        """ Changes payment method of an instance's payment no payment_id or
+        no customer_id is need"""
+        instance_payment = self.customer.payment
+        instance_payment.description = "New payment method"
+        instance_payment.number = number='4111111111111111'
+        instance_payment.verification_value = 123
+        instance_payment.first_name = "Joao"
+        instance_payment.last_name = "Silva"
+        instance_payment.month = 12
+        instance_payment.year = 2015
+        # instance_payment.remove()
+        self.assertRaises(AssertionError, instance_payment.remove)
+
+    def test_getitems_payments(self):
+        payment_one = self.customer.payment.create(description="New payment One",
+                                     number='4111111111111111',
+                                     verification_value=123,
+                                     first_name="World", last_name="Cup",
+                                     month=12, year=2014)
+        payment_two = self.customer.payment.create(description="New payment Two",
+                                     number='4111111111111111',
+                                     verification_value=123,
+                                     first_name="Is a ", last_name="Problem",
+                                     month=12, year=2015)
+        payment_three = self.customer.payment.create(description="New payment Three",
+                                     number='4111111111111111',
+                                     verification_value=123,
+                                     first_name="To Brazil", last_name="Worry",
+                                     month=12, year=2015)
+        list_of_payments = self.customer.payment.getitems()
+        self.assertTrue(isinstance(list_of_payments, list))
+        self.assertTrue(isinstance(list_of_payments[0],
+                                   customer.IuguPaymentMethod))
+
+
+class TestInvoice(unittest.TestCase):
+
+    def setUp(self):
+        hash_md5 = md5()
+        number = randint(1, 50)
+        hash_md5.update(str(number))
+        email = "{email}@test.com".format(email=hash_md5.hexdigest())
+        self.customer_email = email
+
+    def tearDown(self):
+        pass
+
+    def test_invoice_create_basic(self):
+        item = merchant.Item("Prod 1", 1, 1090)
+        i = invoices.IuguInvoice(customer_email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        response = i.create()
+        self.assertTrue(isinstance(response, invoices.IuguInvoice))
+
+    def test_invoice_created_check_id(self):
+        item = merchant.Item("Prod 1", 1, 1090)
+        i = invoices.IuguInvoice(customer_email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        response = i.create()
+        self.assertIsNotNone(response.id)
+
+    def test_invoice_get_one(self):
+        item = merchant.Item("Prod 1", 1, 1190)
+        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        r = inv_one.create()
+        inv_got = invoices.IuguInvoice.get(r.id)
+        self.assertEqual(inv_got.items[0].description, "Prod 1")
+
+    def test_invoice_create_as_draft(self):
+        item = merchant.Item("Prod 1", 1, 1190)
+        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        invoice = inv_one.create(status=True)
+        self.assertEqual(invoice.status, 'draft')
+
+    def test_invoice_edit_as_draft(self):
+        item = merchant.Item("Prod 1", 1, 1190)
+        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        invoice = inv_one.create(status=True)
+        # inv_one is instance not saved
+        invoice_edited = inv_one.set(invoice.id, due_date="10/12/2014")
+        self.assertEqual(invoice_edited.due_date, "10/12/2014")
+        # TODO HERE: RETURNED INVOIDE and NOT print invoice.py:101
 
 if __name__ == '__main__':
         unittest.main()

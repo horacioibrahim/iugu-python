@@ -60,10 +60,10 @@ class IuguMerchant(base.IuguApi):
         if isinstance(items, list):
             for item in items:
                 assert type(item) is Item
-                data.extend(item.to_tuples())
+                data.extend(item.to_data())
         else:
             assert type(items) is Item
-            data.extend(items.to_tuples())
+            data.extend(items.to_data())
 
         urn = "/v1/charge"
         # data fields of charge
@@ -162,12 +162,16 @@ class Address(object):
 
 class Item(object):
 
-    def __init__(self, description, quantity, price_cents):
+    def __init__(self, description, quantity, price_cents, **kwargs):
         self.description = description
         self.quantity = quantity
-        self.price_cents = price_cents
+        self.price_cents = price_cents # must be integer 10.90 => 1090
+        self.id = kwargs.get("id")
+        self.created_at = kwargs.get("created_at")
+        self.updated_at = kwargs.get("updated_at")
+        self.price = kwargs.get("price")
 
-    def to_tuples(self):
+    def to_data(self):
         """
         Returns tuples to encode with urllib.urlencode
         """

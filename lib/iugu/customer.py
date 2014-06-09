@@ -58,6 +58,7 @@ class IuguCustomer(base.IuguApi):
 
         return instance
 
+    @classmethod
     def get(self, customer_id):
         data = []
 
@@ -253,6 +254,7 @@ class IuguPaymentMethod(object):
 
         return IuguPaymentMethod(self.customer, **response)
 
+    @classmethod
     def get(self, payment_id, customer_id=None):
         """ Returns a payment method of an user
         """
@@ -268,6 +270,26 @@ class IuguPaymentMethod(object):
         response = self.conn.get(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
+
+    @classmethod
+    def getitems(self, customer_id=None):
+        data = []
+        data.append(("api_token", self.customer.api_token))
+
+        if customer_id is None:
+            customer_id = self.customer.id
+
+        urn = "/v1/customers/{customer_id}/payment_methods".\
+                format(customer_id=customer_id)
+
+        response = self.conn.get(urn, data)
+        payments = []
+
+        for payment in response:
+            obj_payment = IuguPaymentMethod(self.customer, **payment)
+            payments.append(obj_payment)
+
+        return payments
 
     def set(self, payment_id, description, customer_id=None):
         # TODO: if instance of self already pyament_id
@@ -287,6 +309,7 @@ class IuguPaymentMethod(object):
     def save(self):
         return self.set(self.id, self.description)
 
+    @classmethod
     def delete(self, payment_id, customer_id=None):
         # TODO: if instance of self already pyament_id
         data = []
@@ -303,6 +326,7 @@ class IuguPaymentMethod(object):
         return IuguPaymentMethod(self.customer, **response)
 
     def remove(self):
+        assert self.id is not None, "Invalid: IuguPaymentMethod not have ID."
         return self.delete(self.id)
 
 

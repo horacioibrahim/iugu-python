@@ -16,3 +16,12 @@ class IuguGeneralException(BaseException):
 
     def __str__(self):
         return repr(self.value)
+
+
+class IuguInvoiceException(BaseException):
+
+    def __init__(self, value="Incomplete request for create invoices"):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
