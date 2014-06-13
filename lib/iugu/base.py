@@ -16,7 +16,7 @@ class IuguApi(object):
         self.account_id = options.get('account_id')
         self.api_user = options.get('api_user')
         # self.api_hostname = "api.iugu.com"
-        self.api_mode_test = options.get('api_mode_test')
+        self.api_mode_test = options.get('api_mode_test') # useful for payment_token
 
 
 class IuguRequests(IuguApi):
@@ -27,7 +27,7 @@ class IuguRequests(IuguApi):
     def __init__(self, **options):
         super(IuguRequests, self).__init__(**options)
 
-    #TODO: change __validation by descriptors in response
+    # TODO: change __validation by descriptors in response
     def __validation(self, response, msg=None):
         """
         Validates if data returned by API contains errors json. The API returns
@@ -47,6 +47,7 @@ class IuguRequests(IuguApi):
         else:
             return results
 
+    # TODO: try/except HTTPConnection.request (self.conn.request)
     def get(self, urn, fields):
         fields.append(("api_token", self.API_TOKEN))
         params = urlencode(fields, True)

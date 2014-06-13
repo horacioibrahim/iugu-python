@@ -9,7 +9,7 @@ from hashlib import md5
 from types import StringType
 
 # python-iugu package modules
-import merchant, customer, config, invoices, errors
+import merchant, customer, config, invoices, errors, plans
 
 
 class TestMerchant(unittest.TestCase):
@@ -468,6 +468,11 @@ class TestInvoice(unittest.TestCase):
     def test_invoice_create_basic(self):
         self.assertTrue(isinstance(self.invoice, invoices.IuguInvoice))
 
+    def test_invoice_with_customer_id(self):
+        res = self.invoice_obj.create(customer_id=self.consumer.id)
+        self.assertEqual(res.customer_id, self.consumer.id)
+        res.remove() # after because remove() "to zero" field
+
     def test_invoice_create_all_fields_as_draft(self):
         response = self.invoice_obj.create(draft=True, return_url='http://hipy.co/success',
                             expired_url='http://hipy.co/expired',
@@ -616,10 +621,25 @@ class TestInvoice(unittest.TestCase):
 
     # TODO
     def test_invoice_getitems_limit(self):
-        pass
+        invoice_2 = self.invoice_obj.create()
+        sleep(3)
+        l = invoices.IuguInvoice.getitems(limit=2)
+        invoice_2.remove()
+        self.assertEqual(len(l), 2)
 
     def test_invoice_getitems_skip(self):
-        pass
+        invoice_1 = self.invoice_obj.create()
+        invoice_2 = self.invoice_obj.create()
+        invoice_3 = self.invoice_obj.create()
+        sleep(3)
+        l1 = invoices.IuguInvoice.getitems(limit=3)
+        keep_checker = l1[2]
+        l2 = invoices.IuguInvoice.getitems(skip=2)
+        skipped = l2[0] # after skip 2 the first must be keep_checker
+        invoice_1.remove()
+        invoice_2.remove()
+        invoice_3.remove()
+        self.assertEqual(keep_checker.id, skipped.id)
 
     def test_invoice_getitems_created_at_from(self):
         pass
@@ -628,14 +648,85 @@ class TestInvoice(unittest.TestCase):
 
     def test_invoice_getitems_updated_since(self):
         pass
+
     def test_invoice_getitems_query(self):
-        pass
+        res = self.invoice_obj.create(customer_id=self.consumer.id)
+        sleep(3)
+        queryset = invoices.IuguInvoice.getitems(query=res.id)
+        self.assertEqual(queryset[0].customer_id, res.customer_id)
+        res.remove()
 
     def test_invoice_getitems_customer_id(self):
+        res = self.invoice_obj.create(customer_id=self.consumer.id)
+        sleep(3)
+        queryset = invoices.IuguInvoice.getitems(query=res.id)
+        self.assertEqual(queryset[0].customer_id, res.customer_id)
+        res.remove()
+
+    @unittest.skip("API no support sort (in moment)")
+    def test_invoice_getitems_sort(self):
+        invoice_1 = self.invoice_obj.create()
+        invoice_2 = self.invoice_obj.create()
+        invoice_3 = self.invoice_obj.create()
+        sleep(3)
+        l1 = invoices.IuguInvoice.getitems(limit=3)
+        keep_checker = l1[2]
+        l2 = invoices.IuguInvoice.getitems(limit=3, sort="id")
+        skipped = l2[0] # after skip 2 the first must be keep_checker
+        invoice_1.remove()
+        invoice_2.remove()
+        invoice_3.remove()
+        self.assertEqual(keep_checker.id, skipped.id)
+
+class TestPlans(unittest.TestCase):
+
+    def setUp(self):
         pass
 
-    def test_invoice_getitems_sort(self):
+    def tearDown(self):
         pass
+
+    def test_plan_create(self):
+        plan = plans.IuguPlans.create()
+        self.assertIsInstance(plan, plans.IuguPlans)
+        self.assertTrue(plan.id)
+
+    def test_plan_get(self):
+        pass
+
+    def test_plan_get_identifier(self):
+        pass
+
+    def test_plan_edit_changes_name(self):
+        pass
+
+    def test_plan_edit_changes_identifier(self):
+        pass
+
+    def test_plan_edit_changes_interval(self):
+        pass
+
+    def test_plan_edit_changes_currency(self):
+        pass
+
+    def test_plan_edit_changes_value_cents(self):
+        pass
+
+    def test_plan_edit_changes_prices_currency(self):
+        pass
+
+    def test_plan_edit_changes_prices_value_cents(self):
+        pass
+
+    def test_plan_edit_changes_features_name(self):
+        pass
+
+    def test_plan_edit_changes_features_identifier(self):
+        pass
+
+    def test_plan_edit_changes_features_value(self):
+        pass
+
 
 
 if __name__ == '__main__':
