@@ -6,6 +6,8 @@ import base, config, errors
 
 class IuguCustomer(base.IuguApi):
 
+    conn = base.IuguRequests()
+
     def __init__(self, email, **options):
         """
 
@@ -19,11 +21,12 @@ class IuguCustomer(base.IuguApi):
         self.name = options.get("name")
         self.notes = options.get("notes")
         # TODO: convert str date in date type
+        # year, month, day = map(int, string_date.split('-'))
+        # date_converted = Date(day, month, year)
         self.created_at = options.get("created_at")
         # TODO: convert str date in date type
         self.updated_at = options.get("updated_at")
         self.custom_variables = options.get("custom_variables")
-        self.conn = base.IuguRequests()
         self.payment = IuguPaymentMethod(self)
 
     def create(self, name=None, notes=None, email=None, custom_variables=[]):
@@ -34,7 +37,7 @@ class IuguCustomer(base.IuguApi):
         data = []
         urn = "/v1/customers"
         # data fields of charge
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.A))
 
         if name:
             data.append(("name", name))
@@ -54,7 +57,7 @@ class IuguCustomer(base.IuguApi):
         customer = self.conn.post(urn, data)
 
         instance = IuguCustomer(**customer)
-        instance.api_token = self.api_token
+        # instance.api_token = self.API_TOKEN
 
         return instance
 
@@ -63,11 +66,11 @@ class IuguCustomer(base.IuguApi):
         data = []
 
         # data fields of charge
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.api_token))
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
         customer = self.conn.get(urn, data)
         instance = IuguCustomer(**customer)
-        instance.api_token = self.api_token
+        instance.api_token = self.API_TOKEN
 
         return instance
 
@@ -76,7 +79,7 @@ class IuguCustomer(base.IuguApi):
         """
         data = []
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.api_token))
 
         if name:
             data.append(("name", name))
@@ -97,7 +100,7 @@ class IuguCustomer(base.IuguApi):
     def save(self):
         return self.set(self.id, name=self.name, notes=self.notes)
 
-    def delete(self, customer_id=None, api_token=None):
+    def delete(self, customer_id=None):
         data = []
 
         if self.id:
@@ -111,13 +114,7 @@ class IuguCustomer(base.IuguApi):
                 raise TypeError("It's not instance of object returned because " \
                                 "not possible delete.")
 
-        if self.api_token is None:
-            if api_token:
-                self.api_token = api_token
-            else:
-                raise TypeError("Api token is required")
-
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.api_token))
         urn = "/v1/customers/" + str(_customer_id)
         customer = self.conn.delete(urn, data)
 
@@ -129,7 +126,7 @@ class IuguCustomer(base.IuguApi):
                  created_at_to=None, query=None, updated_since=None, sort=None):
         data = []
         urn = "/v1/customers/"
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.api_token))
 
         # Set options
         if limit:
@@ -162,7 +159,7 @@ class IuguCustomer(base.IuguApi):
 
         for customer in customers["items"]:
             obj_customer = IuguCustomer(**customer)
-            obj_customer.api_token = self.api_token
+            obj_customer.api_token = self.API_TOKEN
             customers_objects.append(obj_customer)
 
         return customers_objects
@@ -213,6 +210,7 @@ class IuguPaymentMethod(object):
         if description:
             self.description = description
 
+        # we can create description when to instance or here (in create)
         assert self.description is not None, "description is required"
 
         if self.customer_id:
@@ -222,7 +220,7 @@ class IuguPaymentMethod(object):
             raise errors.IuguPaymentMethodException
 
         # mounting data...
-        data.append(("api_token", self.customer.api_token))
+        # data.append(("api_token", self.customer.api_token))
         data.append(("description", self.description))
         data.append(("item_type", self.item_type ))
 
@@ -254,7 +252,6 @@ class IuguPaymentMethod(object):
 
         return IuguPaymentMethod(self.customer, **response)
 
-    @classmethod
     def get(self, payment_id, customer_id=None):
         """ Returns a payment method of an user
         """
@@ -262,19 +259,21 @@ class IuguPaymentMethod(object):
         payment_id = str(payment_id)
 
         if customer_id is None:
-            customer_id = self.customer.id
+            if self.customer.id:
+                customer_id = self.customer.id
+            else:
+                raise TypeError("Customer or customer_id is not be None")
 
         urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
                 format(customer_id=customer_id, payment_id=payment_id)
-        data.append(("api_token", self.customer.api_token))
+        # data.append(("api_token", self.customer.api_token))
         response = self.conn.get(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 
-    @classmethod
     def getitems(self, customer_id=None):
         data = []
-        data.append(("api_token", self.customer.api_token))
+        # data.append(("api_token", self.customer.api_token))
 
         if customer_id is None:
             customer_id = self.customer.id
@@ -292,9 +291,9 @@ class IuguPaymentMethod(object):
         return payments
 
     def set(self, payment_id, description, customer_id=None):
-        # TODO: if instance of self already pyament_id
+        # TODO: if instance of self already have payment_id
         data = []
-        data.append(("api_token", self.customer.api_token))
+        # data.append(("api_token", self.customer.api_token))
         data.append(("description", description))
 
         if customer_id is None:
@@ -309,11 +308,10 @@ class IuguPaymentMethod(object):
     def save(self):
         return self.set(self.id, self.description)
 
-    @classmethod
+
     def delete(self, payment_id, customer_id=None):
-        # TODO: if instance of self already pyament_id
+        # TODO: if instance of self already payment_id
         data = []
-        data.append(("api_token", self.customer.api_token))
 
         if customer_id is None:
             customer_id = self.customer.id
@@ -356,10 +354,7 @@ class PaymentTypeCreditCard(object):
         return a data that will extend the data params in request.
         """
         # control to required fields
-        if self.number and self.verification_value and self.first_name and \
-            self.last_name and self.month and self.year:
-            pass
-        else:
+        if not self.is_valid():
             blanks = [ k for k, v in self.__dict__.items() if v is None]
             raise TypeError("All fields required to %s. Blank fields given %s" %
                             (self.__class__, blanks))

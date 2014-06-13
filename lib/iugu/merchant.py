@@ -67,7 +67,7 @@ class IuguMerchant(base.IuguApi):
 
         urn = "/v1/charge"
         # data fields of charge
-        data.append(("api_token", self.api_token))
+        # data.append(("api_token", self.api_token))
 
         if token:
             data.append(("token", token))
@@ -120,7 +120,7 @@ class Token(object):
 
     @property
     def is_test(self):
-        if self.token_data['test'] == True:
+        if 'test' in self.token_data.keys() and self.token_data['test'] == True:
             return True
         else:
             return False
@@ -128,7 +128,7 @@ class Token(object):
     @property
     def status(self):
         try:
-            if self.token_data['errors']:
+            if 'errors' in self.token_data.keys():
                 return self.token_data['errors']
         except:
             pass
@@ -170,14 +170,28 @@ class Item(object):
         self.created_at = kwargs.get("created_at")
         self.updated_at = kwargs.get("updated_at")
         self.price = kwargs.get("price")
+        self.destroy = None
+
+    def __repr__(self):
+        return "%s" % self.description
 
     def to_data(self):
         """
         Returns tuples to encode with urllib.urlencode
         """
         as_tuple = []
+
+        if self.id:
+            as_tuple.append(("items[][id]", self.id ))
+
         as_tuple.append(("items[][description]", self.description))
         as_tuple.append(("items[][quantity]", self.quantity))
         as_tuple.append(("items[][price_cents]", self.price_cents))
+
+        if self.destroy:
+            as_tuple.append(("items[][_destroy]", "true"))
+
         return as_tuple
 
+    def remove(self):
+        self.destroy = True

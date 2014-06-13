@@ -14,6 +14,8 @@ import merchant, customer, config, invoices, errors
 
 class TestMerchant(unittest.TestCase):
 
+    # TODO: remove charges created
+
     def setUp(self):
         self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.EMAIL_CUSTOMER  = config.ACCOUNT_EMAIL
@@ -51,13 +53,11 @@ class TestCustomer(unittest.TestCase):
         number = randint(1, 50)
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
-        self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
 
 
     def test_create_customer_basic_info(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         c = consumer.create()
         c.remove()
@@ -65,7 +65,6 @@ class TestCustomer(unittest.TestCase):
 
     def test_create_customer_extra_attrs(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         c = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -74,7 +73,6 @@ class TestCustomer(unittest.TestCase):
 
     def test_get_customer(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         consumer_new = consumer.create()
         c = consumer.get(customer_id=consumer_new.id)
@@ -83,7 +81,6 @@ class TestCustomer(unittest.TestCase):
 
     def test_set_customer(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -93,7 +90,6 @@ class TestCustomer(unittest.TestCase):
 
     def test_customer_save(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -109,22 +105,22 @@ class TestCustomer(unittest.TestCase):
 
     def test_customer_delete_by_id(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
-        r = consumer.delete(consumer_new.id)
-        self.assertRaises(TypeError, consumer.get, consumer_new.id)
+        consumer.delete(consumer_new.id)
+        self.assertRaises(errors.IuguGeneralException, consumer.get,
+                                consumer_new.id)
 
     def test_customer_delete_instance(self):
         consumer = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=self.API_TOKEN_TEST,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
 
         r = consumer_new.remove()
-        self.assertRaises(TypeError, consumer.get, consumer_new.id)
+        self.assertRaises(errors.IuguGeneralException, consumer.get,
+                                consumer_new.id)
 
 
 class TestCustomerLists(unittest.TestCase):
@@ -261,7 +257,6 @@ class TestCustomerPayments(unittest.TestCase):
         self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
         self.client = customer.IuguCustomer(api_mode_test=True,
-                                            api_token=self.API_TOKEN_TEST,
                                             email="test@testmail.com")
         self.customer = self.client.create()
 
@@ -407,19 +402,21 @@ class TestCustomerPayments(unittest.TestCase):
         self.assertRaises(errors.IuguGeneralException, payment_test,
                                 instance_payment.id)
 
-    def test_set_payment_remove_less_id(self):
-        """ Changes payment method of an instance's payment no payment_id or
-        no customer_id is need"""
+    def test_set_payment_remove_by_attrs(self):
+        """
+
+        """
         instance_payment = self.customer.payment
-        instance_payment.description = "New payment method"
-        instance_payment.number = number='4111111111111111'
-        instance_payment.verification_value = 123
-        instance_payment.first_name = "Joao"
-        instance_payment.last_name = "Silva"
-        instance_payment.month = 12
-        instance_payment.year = 2015
-        # instance_payment.remove()
-        self.assertRaises(AssertionError, instance_payment.remove)
+        instance_payment.payment_data.description = "New payment method"
+        instance_payment.payment_data.number = number='4111111111111111'
+        instance_payment.payment_data.verification_value = 123
+        instance_payment.payment_data.first_name = "Joao"
+        instance_payment.payment_data.last_name = "Silva"
+        instance_payment.payment_data.month = 12
+        instance_payment.payment_data.year = 2015
+        instance_payment = instance_payment.create(description="Meu cartao")
+        instance_payment.remove()
+        self.assertRaises(errors.IuguGeneralException, instance_payment.get, instance_payment.id)
 
     def test_getitems_payments(self):
         payment_one = self.customer.payment.create(description="New payment One",
@@ -451,48 +448,195 @@ class TestInvoice(unittest.TestCase):
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
         self.customer_email = email
+        # create a customer for tests
+        c = customer.IuguCustomer(api_mode_test=True,
+                                         api_token=config.API_TOKEN_TEST,
+                                         email=email)
+        self.consumer = c.create()
+
+        # create a invoice
+        item = merchant.Item("Prod 1", 1, 1190)
+        self.invoice_obj = invoices.IuguInvoice(email=self.customer_email,
+                                 item=item, due_date="30/11/2014")
+        self.invoice = self.invoice_obj.create(draft=True)
 
     def tearDown(self):
-        pass
+        if self.invoice.id: # if id is None it was removed
+            self.invoice.remove()
+        self.consumer.remove()
 
     def test_invoice_create_basic(self):
-        item = merchant.Item("Prod 1", 1, 1090)
-        i = invoices.IuguInvoice(customer_email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
-        response = i.create()
+        self.assertTrue(isinstance(self.invoice, invoices.IuguInvoice))
+
+    def test_invoice_create_all_fields_as_draft(self):
+        response = self.invoice_obj.create(draft=True, return_url='http://hipy.co/success',
+                            expired_url='http://hipy.co/expired',
+                            notification_url='http://hipy.co/webhooks',
+                            tax_cents=200, discount_cents=500,
+                            customer_id=self.consumer.id,
+                            ignore_due_email=True)
         self.assertTrue(isinstance(response, invoices.IuguInvoice))
+        existent_invoice = invoices.IuguInvoice.get(response.id)
+        self.assertEqual(existent_invoice.expiration_url, response.expiration_url)
+        response.remove()
+
+    def test_invoice_create_all_fields_as_pending(self):
+        response = self.invoice_obj.create(draft=False,
+                            return_url='http://example.com/success',
+                            expired_url='http://example.com/expired',
+                            notification_url='http://example.com/webhooks',
+                            tax_cents=200, discount_cents=500,
+                            customer_id=self.consumer.id,
+                            ignore_due_email=True)
+        self.assertTrue(isinstance(response, invoices.IuguInvoice))
+        response.remove()
 
     def test_invoice_created_check_id(self):
-        item = merchant.Item("Prod 1", 1, 1090)
-        i = invoices.IuguInvoice(customer_email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
-        response = i.create()
-        self.assertIsNotNone(response.id)
+        self.assertIsNotNone(self.invoice.id)
 
     def test_invoice_get_one(self):
-        item = merchant.Item("Prod 1", 1, 1190)
-        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
-        r = inv_one.create()
-        inv_got = invoices.IuguInvoice.get(r.id)
-        self.assertEqual(inv_got.items[0].description, "Prod 1")
+        # test start here
+        res = invoices.IuguInvoice.get(self.invoice.id)
+        self.assertEqual(res.items[0].description, "Prod 1")
 
     def test_invoice_create_as_draft(self):
-        item = merchant.Item("Prod 1", 1, 1190)
-        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
-        invoice = inv_one.create(status=True)
-        self.assertEqual(invoice.status, 'draft')
+        self.assertEqual(self.invoice.status, 'draft')
 
-    def test_invoice_edit_as_draft(self):
-        item = merchant.Item("Prod 1", 1, 1190)
-        inv_one = invoices.IuguInvoice(customer_email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
-        invoice = inv_one.create(status=True)
-        # inv_one is instance not saved
-        invoice_edited = inv_one.set(invoice.id, due_date="10/12/2014")
-        self.assertEqual(invoice_edited.due_date, "10/12/2014")
-        # TODO HERE: RETURNED INVOIDE and NOT print invoice.py:101
+    def test_invoice_edit_email_with_set(self):
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id, email="now@now.com")
+        self.assertEqual(invoice_edited.email, u"now@now.com")
+
+    def test_invoice_edit_return_url_with_set(self):
+        return_url = "http://hipy.co"
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              return_url=return_url)
+        self.assertEqual(invoice_edited.return_url, return_url)
+
+    @unittest.skip("It isn't support by API")
+    def test_invoice_edit_expired_url_with_set(self):
+        expired_url = "http://hipy.co"
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              expired_url=expired_url)
+        self.assertEqual(invoice_edited.expiration_url, expired_url)
+
+    def test_invoice_edit_notification_url_with_set(self):
+        notification_url = "http://hipy.co"
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              notification_url=notification_url)
+        self.assertEqual(invoice_edited.notification_url, notification_url)
+
+    def test_invoice_edit_tax_cents_with_set(self):
+        tax_cents= 200
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              tax_cents=tax_cents)
+        self.assertEqual(invoice_edited.tax_cents, tax_cents)
+
+    def test_invoice_edit_discount_cents_with_set(self):
+        discount_cents = 500
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              discount_cents=discount_cents)
+        self.assertEqual(invoice_edited.discount_cents, discount_cents)
+
+    def test_invoice_edit_customer_id_with_set(self):
+        customer_id = self.consumer.id
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              customer_id=customer_id)
+        self.assertEqual(invoice_edited.customer_id, customer_id)
+
+    @unittest.skip("Without return, but the logs could have it")
+    def test_invoice_edit_ignore_due_email_with_set(self):
+        ignore_due_email = True
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              ignore_due_email=ignore_due_email)
+        self.assertEqual(invoice_edited.ignore_due_email, ignore_due_email)
+
+    def test_invoice_edit_subscription_id_with_set(self):
+        pass
+
+    def test_invoice_edit_credits_with_set(self):
+        pass
+
+    def test_invoice_edit_due_date_with_set(self):
+        due_date = "31/12/2014"
+        id = self.invoice.id
+        invoice_edited = self.invoice_obj.set(invoice_id=id,
+                                              due_date=due_date)
+        self.assertEqual(invoice_edited.due_date, u'2014-12-31')
+
+    def test_invoice_edit_items_with_set(self):
+        self.invoice.items[0].description = "Prod Fixed Text and Value"
+        id = self.invoice.id
+        items = self.invoice.items[0]
+        invoice_edited = self.invoice_obj.set(invoice_id=id, items=items)
+        self.assertEqual(invoice_edited.items[0].description, "Prod Fixed Text and Value")
+
+    def test_invoice_changed_items_with_save(self):
+        self.invoice.items[0].description = "Prod Saved by Instance"
+        # inv_one is instance not saved. Now, we have invoice saved
+        # and invoice_edited that is the response of webservice
+        res = self.invoice.save()
+        self.assertEqual(res.items[0].description, "Prod Saved by Instance")
+
+    def test_invoice_destroy_item(self):
+        self.invoice.items[0].remove()
+        re_invoice = self.invoice.save()
+        self.assertNotIn("items", re_invoice.__dict__.keys())
+
+    def test_invoice_remove(self):
+        # wait webservice response time
+        sleep(3)
+        self.invoice.remove()
+        self.assertEqual(self.invoice.id, None)
+
+    def test_invoice_cancel(self):
+        invoice = self.invoice_obj.create(draft=False)
+        re_invoice = invoice.cancel()
+        self.assertEqual(re_invoice.status, "canceled")
+        invoice.remove()
+
+    @unittest.skip("Support only invoice paid")
+    def test_invoice_refund(self):
+        re_invoice = self.invoice.refund()
+        self.assertEqual(re_invoice.status, "canceled")
+
+    def test_invoice_getitems(self):
+        # wait webservice response time
+        sleep(3)
+        l = invoices.IuguInvoice.getitems()
+        self.assertIsInstance(l, list)
+        self.assertIsInstance(l[0], invoices.IuguInvoice)
+
+    # TODO
+    def test_invoice_getitems_limit(self):
+        pass
+
+    def test_invoice_getitems_skip(self):
+        pass
+
+    def test_invoice_getitems_created_at_from(self):
+        pass
+    def test_invoice_getitems_created_at_to(self):
+        pass
+
+    def test_invoice_getitems_updated_since(self):
+        pass
+    def test_invoice_getitems_query(self):
+        pass
+
+    def test_invoice_getitems_customer_id(self):
+        pass
+
+    def test_invoice_getitems_sort(self):
+        pass
+
 
 if __name__ == '__main__':
         unittest.main()
