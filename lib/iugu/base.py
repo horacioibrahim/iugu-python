@@ -1,7 +1,7 @@
 # coding: utf-8
 __author__ = 'horacioibrahim'
 
-from httplib import HTTPSConnection
+from httplib import HTTPSConnection, CannotSendRequest, ResponseNotReady, BadStatusLine
 from urllib import urlencode
 from json import load as json_load
 
@@ -18,16 +18,35 @@ class IuguApi(object):
         # self.api_hostname = "api.iugu.com"
         self.api_mode_test = options.get('api_mode_test') # useful for payment_token
 
+    def is_debug(self):
+        """ Checks if debug mode is True.
+        """
+        return config.DEBUG
+
+    def is_mode_test(self):
+        # This is the "test mode" in API
+
+        if self.api_mode_test is True:
+            return "true"
+
+        if self.api_mode_test is False:
+            return "false"
+
+        return str(config.API_MODE_TEST).lower()
+
 
 class IuguRequests(IuguApi):
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     conn = HTTPSConnection(config.API_HOSTNAME) # not put in instance
+    conn.timeout = 10
 
     def __init__(self, **options):
         super(IuguRequests, self).__init__(**options)
 
-    # TODO: change __validation by descriptors in response
+        if self.is_debug():
+            self.conn.set_debuglevel(2)
+
     def __validation(self, response, msg=None):
         """
         Validates if data returned by API contains errors json. The API returns
@@ -47,31 +66,53 @@ class IuguRequests(IuguApi):
         else:
             return results
 
-    # TODO: try/except HTTPConnection.request (self.conn.request)
+    def __reload_conn(self):
+        """
+        Wrapper to keep tcp connection ESTABLISHED. Rather the connection go to
+        CLOSE_WAIT and raise errors CannotSendRequest
+        """
+        self.conn = HTTPSConnection(config.API_HOSTNAME) # reload
+        self.conn.timeout = 10
+
+    def __conn_request(self, http_verb, urn, params):
+        """
+        Wrapper to request/response of httplib's context
+        """
+        try:
+            self.conn.request(http_verb, urn, params, self.headers)
+        except CannotSendRequest:
+            self.__reload_conn()
+            self.conn.request(http_verb, urn, params, self.headers)
+
+        try:
+            response = self.conn.getresponse()
+        except (IOError, BadStatusLine):
+            self.__reload_conn()
+            self.conn.request(http_verb, urn, params, self.headers)
+            response = self.conn.getresponse()
+
+        return response
+
     def get(self, urn, fields):
         fields.append(("api_token", self.API_TOKEN))
         params = urlencode(fields, True)
-        self.conn.request("GET", urn, params, self.headers)
-        response = self.conn.getresponse()
+        response = self.__conn_request("GET", urn, params)
         return self.__validation(response)
 
     def post(self, urn, fields):
         fields.append(("api_token", self.API_TOKEN))
         params = urlencode(fields, True)
-        self.conn.request("POST", urn, params, self.headers)
-        response = self.conn.getresponse()
+        response = self.__conn_request("POST", urn, params)
         return self.__validation(response)
 
     def put(self, urn, fields):
         fields.append(("api_token", self.API_TOKEN))
         params = urlencode(fields, True)
-        self.conn.request("PUT", urn, params, self.headers)
-        response = self.conn.getresponse()
+        response = self.__conn_request("PUT", urn, params)
         return self.__validation(response)
 
     def delete(self, urn, fields):
         fields.append(("api_token", self.API_TOKEN))
         params = urlencode(fields, True)
-        self.conn.request("DELETE", urn, params, self.headers)
-        response = self.conn.getresponse()
+        response = self.__conn_request("DELETE", urn, params)
         return self.__validation(response)
