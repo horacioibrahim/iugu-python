@@ -14,14 +14,6 @@ class IuguMerchant(base.IuguApi):
         super(IuguMerchant, self).__init__(**kwargs)
         self.conn = base.IuguRequests()
 
-    def is_debug(self):
-        """ Checks if debug mode is True. This is the "test mode" in API
-        """
-        if self.api_mode_test:
-            return str(True).lower()
-
-        return str(config.DEBUG).lower()
-
     def create_payment_token(self, card_number, first_name, last_name,
                              month, year, verification_value, method="credit_card"):
         """ Returns a token for payment process
@@ -41,7 +33,7 @@ class IuguMerchant(base.IuguApi):
                 ('data[month]', month), ('data[year]', year),
                 ('data[number]', card_number)]
         data.append(("account_id", self.account_id))
-        data.append(("test", self.is_debug()))
+        data.append(("test", self.is_mode_test()))
         data.append(("method", method))
         token_data = self.conn.post(urn, data)
 

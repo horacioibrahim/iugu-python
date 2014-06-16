@@ -8,7 +8,7 @@ class IuguCustomer(base.IuguApi):
 
     conn = base.IuguRequests()
 
-    def __init__(self, email, **options):
+    def __init__(self, **options):
         """
 
         :param **options: receives dict load by json
@@ -16,7 +16,7 @@ class IuguCustomer(base.IuguApi):
         """
         super(IuguCustomer, self).__init__(**options)
         self.id = options.get("id")
-        self.email = email
+        self.email = options.get("email")
         self.default_payment_method_id = options.get("default_payment_method_id")
         self.name = options.get("name")
         self.notes = options.get("notes")
@@ -46,9 +46,12 @@ class IuguCustomer(base.IuguApi):
             data.append(("notes", notes))
 
         if email:
-            data.append(("email", email))
+            self.email = email
         else:
-            data.append(("email", self.email))
+            if self.email:
+                data.append(("email", self.email))
+            else:
+                raise errors.IuguGeneralException(value="E-mail required is empty")
 
         if isinstance(custom_variables, list) and len(custom_variables) > 0:
             for custom_var in custom_variables:
@@ -122,6 +125,7 @@ class IuguCustomer(base.IuguApi):
 
     remove = delete # remove for semantic of API and delete for HTTP verbs
 
+    @classmethod
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None):
         data = []
@@ -159,7 +163,7 @@ class IuguCustomer(base.IuguApi):
 
         for customer in customers["items"]:
             obj_customer = IuguCustomer(**customer)
-            obj_customer.api_token = self.API_TOKEN
+            # obj_customer.api_token = self.API_TOKEN # This is all IuguRequests
             customers_objects.append(obj_customer)
 
         return customers_objects
@@ -220,7 +224,6 @@ class IuguPaymentMethod(object):
             raise errors.IuguPaymentMethodException
 
         # mounting data...
-        # data.append(("api_token", self.customer.api_token))
         data.append(("description", self.description))
         data.append(("item_type", self.item_type ))
 
@@ -342,6 +345,7 @@ class PaymentTypeCreditCard(object):
         self.brand = kwargs.get('brand')
 
     def is_valid(self):
+        """Required to send to API"""
         if self.number and self.verification_value and self.first_name and \
             self.last_name and self.month and self.year:
             return True
@@ -358,13 +362,11 @@ class PaymentTypeCreditCard(object):
             blanks = [ k for k, v in self.__dict__.items() if v is None]
             raise TypeError("All fields required to %s. Blank fields given %s" %
                             (self.__class__, blanks))
+
         data = []
-        data.append(("data[number]", self.number))
-        data.append(("data[verification_value]", self.verification_value))
-        data.append(("data[first_name]", self.first_name))
-        data.append(("data[last_name]", self.last_name))
-        data.append(("data[month]", self.month))
-        data.append(("data[year]", self.year))
+        for k, v in self.__dict__.items():
+            key = "data[{key_name}]".format(key_name=k)
+            data.append((key, v))
 
         return data
 

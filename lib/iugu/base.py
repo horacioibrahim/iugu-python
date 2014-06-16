@@ -1,7 +1,7 @@
 # coding: utf-8
 __author__ = 'horacioibrahim'
 
-from httplib import HTTPSConnection, CannotSendRequest, ResponseNotReady, BadStatusLine
+from httplib import HTTPSConnection, CannotSendRequest, BadStatusLine
 from urllib import urlencode
 from json import load as json_load
 
@@ -68,8 +68,9 @@ class IuguRequests(IuguApi):
 
     def __reload_conn(self):
         """
-        Wrapper to keep tcp connection ESTABLISHED. Rather the connection go to
-        CLOSE_WAIT and raise errors CannotSendRequest
+        Wrapper to keep TCP connection ESTABLISHED. Rather the connection go to
+        CLOSE_WAIT and raise errors CannotSendRequest or the server reply with
+        empty and it raise BadStatusLine
         """
         self.conn = HTTPSConnection(config.API_HOSTNAME) # reload
         self.conn.timeout = 10

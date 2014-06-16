@@ -208,7 +208,8 @@ class TestCustomerLists(unittest.TestCase):
         term = 'name_inexistent_or_improbable_here_{salt}'.format(salt=salt)
         # test value/term in >>email<<
         email = term + '@email.com'
-        customer = self.c.create(email=email)
+        self.c.email = email
+        customer = self.c.create()
         sleep(2)
         items = self.c.getitems(query=term)
         customer.remove()
@@ -256,12 +257,18 @@ class TestCustomerPayments(unittest.TestCase):
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
         self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
-        self.client = customer.IuguCustomer(api_mode_test=True,
-                                            email="test@testmail.com")
+        self.client = customer.IuguCustomer(email="test@testmail.com")
         self.customer = self.client.create()
 
+        self.instance_payment = self.customer.payment.create(description="New payment method",
+                             number='4111111111111111',
+                             verification_value=123,
+                             first_name="Joao", last_name="Maria",
+                             month=12, year=2014)
+
     def tearDown(self):
-        self.customer.remove()
+        self.instance_payment.remove()
+        self.customer.remove() # if you remove customer also get payment
 
     def test_create_payment_method_new_user_by_create(self):
         """ Test create payment method to new recent user returned by create()
@@ -272,7 +279,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
-
+        instance_payment.remove()
         self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
 
     def test_create_payment_method_existent_user_by_get(self):
@@ -288,7 +295,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2015)
-
+        instance_payment.remove()
         self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
 
     def test_create_payment_method_existent_user_by_getitems(self):
@@ -303,7 +310,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      verification_value=123,
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2016)
-
+        instance_payment.remove()
         self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
 
     def test_create_payment_method_non_existent_user_by_instance(self):
@@ -320,41 +327,30 @@ class TestCustomerPayments(unittest.TestCase):
 
     def test_create_payment_method_raise_general(self):
         # Create payment method without data{} where API returns error.
-        self.assertRaises(errors.IuguGeneralException, self.customer.payment.create,
-                          description="New payment method")
+        customer = self.client.create()
+        self.assertRaises(errors.IuguGeneralException, customer.payment.create,
+                          description="Second payment method")
+        customer.remove()
 
     def test_get_payment_method_by_payment_id_customer_id(self):
         # Test get payment based payment_id and customer_id
-        instance_payment = self.customer.payment.create(description="New payment method",
-                                     number='4111111111111111',
-                                     verification_value=123,
-                                     first_name="Joao", last_name="Maria",
-                                     month=12, year=2014)
+        id = self.instance_payment.id
         # two args passed
-        payment = self.client.payment.get(instance_payment.id,
-                                          customer_id=self.customer.id)
+        payment = self.client.payment.get(id, customer_id=self.customer.id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
 
     def test_get_payment_by_customer(self):
         # Test get payment by instance's customer (existent in API)
-        instance_payment = self.customer.payment.create(description="New payment method",
-                                     number='4111111111111111',
-                                     verification_value=123,
-                                     first_name="Joao", last_name="Maria",
-                                     month=12, year=2014)
+        id = self.instance_payment.id
         # one arg passed. user is implicit to customer
-        payment = self.customer.payment.get(instance_payment.id)
+        payment = self.customer.payment.get(id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
 
     def test_set_payment_by_payment_id_customer_id(self):
         # Changes payment method base payment_id and customer_id
-        instance_payment = self.customer.payment.create(description="New payment method",
-                                     number='4111111111111111',
-                                     verification_value=123,
-                                     first_name="Joao", last_name="Maria",
-                                     month=12, year=2014)
+        id = self.instance_payment.id
         # two args passed
-        payment = self.client.payment.set(instance_payment.id, "New Card Name",
+        payment = self.client.payment.set(id, "New Card Name",
                                           customer_id=self.customer.id)
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
@@ -362,13 +358,9 @@ class TestCustomerPayments(unittest.TestCase):
 
     def test_set_payment_by_customer(self):
         # Changes payment method base payment_id of an intance's customer
-        instance_payment = self.customer.payment.create(description="New payment method",
-                                     number='4111111111111111',
-                                     verification_value=123,
-                                     first_name="Joao", last_name="Maria",
-                                     month=12, year=2014)
+        id = self.instance_payment.id
         # one arg passed. user is implicit to customer
-        payment = self.customer.payment.set(instance_payment.id, "New Card Name")
+        payment = self.customer.payment.set(id, "New Card Name")
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
         self.assertEqual(payment_test.description, payment.description)
@@ -376,14 +368,9 @@ class TestCustomerPayments(unittest.TestCase):
     def test_set_payment_by_customer_by_save(self):
         """ Changes payment method of an instance's payment no payment_id or
         no customer_id is need"""
-        instance_payment = self.customer.payment.create(description="New payment method",
-                                     number='4111111111111111',
-                                     verification_value=123,
-                                     first_name="Joao", last_name="Maria",
-                                     month=12, year=2014)
-        instance_payment.description = "New Card Name"
+        self.instance_payment.description = "New Card Name"
         # no args passed. To payment method instance this is implicit
-        payment = instance_payment.save()
+        payment = self.instance_payment.save()
         self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
         self.assertEqual(payment_test.description, payment.description)
@@ -461,7 +448,7 @@ class TestInvoice(unittest.TestCase):
         self.invoice = self.invoice_obj.create(draft=True)
 
     def tearDown(self):
-        if self.invoice.id: # if id is None it was removed
+        if self.invoice.id: # if id is None already was removed
             self.invoice.remove()
         self.consumer.remove()
 
@@ -642,12 +629,13 @@ class TestInvoice(unittest.TestCase):
         self.assertEqual(keep_checker.id, skipped.id)
 
     def test_invoice_getitems_created_at_from(self):
-        pass
+        pass # TODO
+
     def test_invoice_getitems_created_at_to(self):
-        pass
+        pass # TODO
 
     def test_invoice_getitems_updated_since(self):
-        pass
+        pass # TODO
 
     def test_invoice_getitems_query(self):
         res = self.invoice_obj.create(customer_id=self.consumer.id)
@@ -681,15 +669,27 @@ class TestInvoice(unittest.TestCase):
 class TestPlans(unittest.TestCase):
 
     def setUp(self):
-        pass
+        hash_md5 = md5()
+        seed = randint(1, 50)
+        hash_md5.update(str(seed))
+        identifier = hash_md5.hexdigest()[:6]
+        self.identifier = identifier # random because can't be repeated
 
     def tearDown(self):
         pass
 
     def test_plan_create(self):
-        plan = plans.IuguPlans.create()
-        self.assertIsInstance(plan, plans.IuguPlans)
-        self.assertTrue(plan.id)
+        plan = plans.IuguPlan()
+        new_plan = plan.create(name="My first lib Plan", identifier=self.identifier,
+                                     interval=1, interval_type="months",
+                                     currency="BRL", value_cents=1000)
+        self.assertIsInstance(new_plan, plans.IuguPlan)
+        self.assertTrue(new_plan.id)
+        new_plan.remove()
+
+    def test_plan_create_without_required_fields(self):
+        plan = plans.IuguPlan()
+        self.assertRaises(errors.IuguPlansException, plan.create)
 
     def test_plan_get(self):
         pass

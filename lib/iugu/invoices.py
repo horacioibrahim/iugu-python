@@ -172,7 +172,7 @@ class IuguInvoice(object):
             if self.due_date:
                 # due_date is required. If it not passed in args, it must to
                 # exist at least in instance object
-                due_date = self.due_date
+                due_date = self.due_date # "force" declaring locally
             else:
                 raise errors.IuguInvoiceException(value="Required due_date is" \
                                                 " empty.")
@@ -180,17 +180,17 @@ class IuguInvoice(object):
         if not items:
             if self.items:
                 # At create items is required. If it not passed as args,
-                # it must to exist  at least in instance object
-                items = self.items
+                # it must to exist at least in instance object
+                items = self.items # "force" declaring locally
             else:
                 raise errors.IuguInvoiceException(value="Required items is" \
                                             " empty.")
 
         if not email:
             if self.email:
-                # At create items is required. If it not passed as args,
+                # At create email is required. If it not passed as args,
                 # it must to exist at least in instance object
-                email = self.email
+                email = self.email # "force" declaring locally
             else:
                 raise errors.IuguInvoiceException(value="Required customer" \
                                     " email is empty.")
@@ -199,15 +199,15 @@ class IuguInvoice(object):
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
 
-        if self.email is None or self.due_date is None or \
-                self.items is None:
-            raise errors.IuguInvoiceException
+        #if self.email is None or self.due_date is None or \
+             #   self.items is None:
+           # raise errors.IuguInvoiceException
 
         self.data = kwargs_local
 
         urn = "/v1/invoices"
         response = self.conn.post(urn, self.data)
-        invoice = IuguInvoice(item=self.items, **response)
+        invoice = IuguInvoice(item=self.items, **response) # TODO: review item arg if required
         return invoice
 
     @classmethod
