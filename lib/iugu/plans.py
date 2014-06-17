@@ -69,16 +69,26 @@ class IuguPlan(object):
         self.features = kwargs.get("features")
 
         # required fields. if not passed the API return an exception
-        if self.is_valid():
+        if self.name:
             data.append(("name", self.name))
+
+        if self.identifier:
             data.append(("identifier", self.identifier))
+
+        if self.interval:
             data.append(("interval", self.interval))
+
+        if self.interval_type:
             data.append(("interval_type", self.interval_type))
-            data.append(("currency", self.currency))
+
+        if self.currency:
+            if self.currency == "BRL":
+                data.append(("currency", self.currency))
+            else:
+                raise errors.IuguPlansException(value="Only BRL supported")
+
+        if self.value_cents:
             data.append(("value_cents", self.value_cents))
-        else:
-            # for prevent request in API with incomplete data
-            raise errors.IuguPlansException
 
         # optional fields
         if self.prices:
@@ -108,6 +118,47 @@ class IuguPlan(object):
         """
         Creates a new plans
         """
+
+        if not name:
+            if self.name:
+                name = self.name
+            else:
+                raise errors.IuguPlansException(value="Name is required")
+
+        if not identifier:
+            if self.identifier:
+                identifier = self.identifier
+            else:
+                raise errors.IuguPlansException(value="identifier is required")
+
+        if not interval:
+            if self.interval:
+                interval = self.interval
+            else:
+                raise errors.IuguPlansException(value="interval is required")
+
+        if not interval_type:
+            if self.interval_type:
+                interval_type = self.interval_type
+            else:
+                raise errors.IuguPlansException(value="interval_type is required")
+
+        if not features:
+            if self.features:
+                features = self.features
+
+        if not prices:
+            if self.prices:
+                prices = self.prices
+
+        if not value_cents:
+            if self.value_cents:
+                value_cents = self.value_cents
+
+        if not currency:
+            if self.currency:
+                currency = self.currency
+
         urn = "/v1/plans"
         kwargs_local = locals().copy()
         kwargs_local.pop('self') # prevent error of multiple value for args
@@ -116,23 +167,99 @@ class IuguPlan(object):
 
         return IuguPlan(**response)
 
-    def get(self):
-        pass
-
-    def get_by_identifier(self):
-        pass
-
-    def getitems(self):
-        pass
-
-    def set(self):
-        pass
+    def set(self, plan_id, name=None, identifier=None, interval=None,
+               interval_type=None, currency=None, value_cents=None,
+               features=None, prices=None):
+        """
+        Edits existent plan
+        """
+        urn = "/v1/plans/{plan_id}".format(plan_id=plan_id)
+        kwargs_local = locals().copy()
+        kwargs_local.pop('self')
+        self.data = kwargs_local
+        response = self.conn.put(urn, self.data)
+        return IuguPlan(**response)
 
     def save(self):
-        pass
+        urn = "/v1/plans/{plan_id}".format(plan_id=self.id)
+        self.data = self.__dict__
+        response = self.conn.put(urn, self.data)
+        return IuguPlan(**response)
 
-    def remove(self):
-        pass
+    @classmethod
+    def get(self, plan_id):
+        data = []
+        urn = "/v1/plans/{plan_id}".format(plan_id=plan_id)
+        response = self.conn.get(urn, data)
+        return IuguPlan(**response)
+
+    @classmethod
+    def get_by_identifier(self, identifier):
+        data = []
+        urn = "/v1/plans/identifier/{identifier}".format(identifier=identifier)
+        response = self.conn.get(urn, data)
+        return IuguPlan(**response)
+
+    @classmethod
+    def getitems(self, limit=None, skip=None, query=None, updated_since=None,
+                 sort=None):
+        data = []
+        urn = "/v1/plans/"
+
+        # Set options
+        if limit:
+            data.append(("limit", limit))
+
+        if skip:
+            data.append(("start", skip))
+
+        if updated_since:
+            data.append(("updated_since", updated_since))
+
+        if query:
+            data.append(("query", query))
+
+        # TODO: sort not work fine. Waiting support of API providers
+        if sort:
+            assert sort is not str, "sort must be string as -name or name"
+
+            if sort.startswith("-"):
+                sort = sort[1:]
+                key = "sortBy[{field}]".format(field=sort)
+                data.append((key, "desc"))
+            else:
+                key = "sortBy[{field}]".format(field=sort)
+                data.append((key, "asc"))
+
+        plans = self.conn.get(urn, data)
+        plans_objects = []
+        for plan_item in plans["items"]:
+            obj_plan = IuguPlan(**plan_item)
+            plans_objects.append(obj_plan)
+
+        return plans_objects
+
+    def remove(self, plan_id=None):
+        """
+        Removes an object of IuguPlan or by plan_id
+        """
+        if plan_id:
+            to_remove = plan_id
+        else:
+            to_remove = self.id
+
+        if not to_remove:
+            raise errors.IuguPlansException(value="Instance or plan id is required")
+
+        urn = "/v1/plans/{plan_id}".format(plan_id=to_remove)
+        response = self.conn.delete(urn, [])
+        # check if result can to generate instance of IuguPlan
+        obj = IuguPlan(**response)
+
+        if obj:
+            for k, v in self.__dict__.items():
+                self.__dict__[k] = None
+
 
 class Price(object):
 
@@ -163,8 +290,9 @@ class Price(object):
 
         data = []
         for k, v in self.__dict__.items():
-            key = "prices[{key_name}]".format(key_name=k)
-            data.append((key, v))
+            if v is not None:
+                key = "prices[][{key_name}]".format(key_name=k)
+                data.append((key, v))
 
         return data
 
@@ -203,7 +331,7 @@ class Feature(object):
 
         data = []
         for k, v in self.__dict__.items():
-            key = "features[{key_name]".format(key_name=k)
-            data.append((key, v))
-
+            if v is not None:
+                key = "features[][{key_name}]".format(key_name=k)
+                data.append((key, v))
         return data

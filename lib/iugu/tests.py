@@ -670,17 +670,29 @@ class TestPlans(unittest.TestCase):
 
     def setUp(self):
         hash_md5 = md5()
-        seed = randint(1, 50)
+        seed = randint(1, 199)
+        variation = randint(4, 8)
         hash_md5.update(str(seed))
-        identifier = hash_md5.hexdigest()[:6]
+        identifier = hash_md5.hexdigest()[:variation]
         self.identifier = identifier # random because can't be repeated
+        plan = plans.IuguPlan()
+        self.plan = plan.create(name="My SetUp Plan", identifier=self.identifier,
+                                     interval=1, interval_type="months",
+                                     currency="BRL", value_cents=1500)
+
+        # features
+        self.features = plans.Feature()
+        self.features.name = "Add feature %s" % self.identifier
+        self.features.identifier = self.identifier
+        self.features.value = 11
 
     def tearDown(self):
-        pass
+        self.plan.remove()
 
     def test_plan_create(self):
         plan = plans.IuguPlan()
-        new_plan = plan.create(name="My first lib Plan", identifier=self.identifier,
+        identifier = self.identifier + "salt"
+        new_plan = plan.create(name="My first lib Plan", identifier=identifier,
                                      interval=1, interval_type="months",
                                      currency="BRL", value_cents=1000)
         self.assertIsInstance(new_plan, plans.IuguPlan)
@@ -691,43 +703,265 @@ class TestPlans(unittest.TestCase):
         plan = plans.IuguPlan()
         self.assertRaises(errors.IuguPlansException, plan.create)
 
+    def test_plan_create_features(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+        # init object
+        plan = plans.IuguPlan(name="Plan with features", identifier=identifier,
+                                     interval=1, interval_type="months",
+                                     currency="BRL", value_cents=1000)
+
+        plan.features = [self.features,]
+        new_plan_with_features = plan.create()
+        self.assertIsInstance(new_plan_with_features.features[0], plans.Feature)
+        self.assertEqual(new_plan_with_features.features[0].value, self.features.value)
+        new_plan_with_features.remove()
+
     def test_plan_get(self):
-        pass
+        plan_id = self.plan.id
+        plan = plans.IuguPlan.get(plan_id)
+        self.assertEqual(self.identifier, plan.identifier)
 
     def test_plan_get_identifier(self):
+        plan = plans.IuguPlan.get_by_identifier(self.identifier)
+        self.assertEqual(self.identifier, plan.identifier)
+
+    def test_plan_remove(self):
+        plan = plans.IuguPlan()
+        new_plan = plan.create(name="Remove me", identifier="to_remove",
+                                     interval=1, interval_type="months",
+                                     currency="BRL", value_cents=2000)
+        removed_id = new_plan.id
+        new_plan.remove()
+        self.assertRaises(errors.IuguGeneralException,
+                                        plans.IuguPlan.get, removed_id)
+
+    def test_plan_edit_changes_name_by_set(self):
+        plan_id = self.plan.id
+        new_name = "New name %s" % self.identifier
+        modified_plan = self.plan.set(plan_id, name=new_name)
+        self.assertEqual(new_name, modified_plan.name)
+
+    def test_plan_edit_changes_identifier_by_set(self):
+        plan_id = self.plan.id
+        new_identifier = "New identifier %s" % self.identifier
+        modified_plan = self.plan.set(plan_id, identifier=new_identifier)
+        self.assertEqual(new_identifier, modified_plan.identifier)
+
+    def test_plan_edit_changes_interval_by_set(self):
+        plan_id = self.plan.id
+        new_interval = 3
+        modified_plan = self.plan.set(plan_id, interval=new_interval)
+        self.assertEqual(new_interval, modified_plan.interval)
+
+    def test_plan_edit_changes_currency_by_set(self):
+        plan_id = self.plan.id
+        new_currency = "US"
+        self.assertRaises(errors.IuguPlansException, self.plan.set,
+                          plan_id, currency=new_currency)
+
+    def test_plan_edit_changes_value_cents_by_set(self):
+        plan_id = self.plan.id
+        value_cents = 3000
+        modified_plan = self.plan.set(plan_id, value_cents=value_cents)
+        self.assertEqual(value_cents, modified_plan.prices[0].value_cents)
+
+    def test_plan_edit_changes_features_name_by_set(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features Name"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        changed_features = plan_returned.features
+        changed_features[0].name = "Changed Name of Features"
+
+        # return plan changed
+        plan_changed = plan.set(plan_returned.id, features=[changed_features[0]])
+
+        self.assertEqual(plan_changed.features[0].name,
+                         plan_returned.features[0].name)
+        plan_returned.remove()
+
+    def test_plan_edit_changes_features_identifier_by_set(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features Identifier"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        changed_features = plan_returned.features
+        changed_features[0].identifier = "Crazy_Change"
+
+        # return plan changed
+        plan_changed = plan.set(plan_returned.id, features=[changed_features[0]])
+
+        self.assertEqual(plan_changed.features[0].identifier,
+                         plan_returned.features[0].identifier)
+        plan_returned.remove()
+
+    def test_plan_edit_changes_features_value_by_set(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features Identifier"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        changed_features = plan_returned.features
+        changed_features[0].value = 10000
+
+        # return plan changed
+        plan_changed = plan.set(plan_returned.id, features=[changed_features[0]])
+
+        self.assertEqual(plan_changed.features[0].value,
+                         plan_returned.features[0].value)
+        plan_returned.remove()
+
+    def test_plan_edit_changes_name_by_save(self):
+        self.plan.name = "New name %s" % self.identifier
+        response = self.plan.save()
+        self.assertEqual(response.name, self.plan.name)
+
+    def test_plan_edit_changes_identifier_by_save(self):
+        self.plan.identifier = "New_identifier_%s" % self.identifier
+        response = self.plan.save()
+        self.assertEqual(response.identifier, self.plan.identifier)
+
+    def test_plan_edit_changes_interval_by_save(self):
+        self.plan.interval = 4
+        response = self.plan.save()
+        self.assertEqual(response.interval, 4)
+
+    def test_plan_edit_changes_currency_by_save(self):
+        # API only support BRL
+        self.plan.currency = "US"
+        # response = self.plan.save()
+        self.assertRaises(errors.IuguPlansException, self.plan.save)
+
+    def test_plan_edit_changes_value_cents_by_save(self):
+        self.plan.value_cents = 4000
+        response = self.plan.save()
+        self.assertEqual(response.prices[0].value_cents, 4000)
+
+    def test_plan_edit_changes_features_name_by_save(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features by Save"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        to_change_features = plan_returned.features
+        to_change_features[0].name = "Features New by Save"
+
+        # return plan changed and to save instance
+        plan_returned.features = [to_change_features[0]]
+        plan_changed = plan_returned.save()
+
+        self.assertEqual(plan_changed.features[0].name, "Features New by Save")
+        plan_returned.remove()
+
+    def test_plan_edit_changes_features_identifier_by_save(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features by Save"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        to_change_features = plan_returned.features
+        to_change_features[0].identifier = "Crazy_Changed"
+
+        # return plan changed and to save instance
+        plan_returned.features = [to_change_features[0]]
+        plan_changed = plan_returned.save()
+
+        self.assertEqual(plan_changed.features[0].identifier, "Crazy_Changed")
+        plan_returned.remove()
+
+    def test_plan_edit_changes_features_value_by_save(self):
+        salt = randint(1, 99)
+        identifier = self.identifier + str(salt)
+
+        # creating a plan with features
+        plan = plans.IuguPlan()
+        plan.features = [self.features,]
+        plan.name = "Changes Features by Save"
+        plan.identifier = identifier # workaround: setUp already creates
+        plan.interval = 2
+        plan.interval_type = "weeks"
+        plan.currency = "BRL"
+        plan.value_cents = 3000
+        plan_returned = plan.create()
+
+        # to change features name where features already has an id
+        to_change_features = plan_returned.features
+        to_change_features[0].value = 8000
+
+        # return plan changed and to save instance
+        plan_returned.features = [to_change_features[0]]
+        plan_changed = plan_returned.save()
+
+        self.assertEqual(plan_changed.features[0].value, 8000)
+        plan_returned.remove()
+
+    def test_plan_getitems_filter_limit(self):
         pass
 
-    def test_plan_edit_changes_name(self):
+    def test_plan_getitems_filter_skip(self):
         pass
 
-    def test_plan_edit_changes_identifier(self):
+    def test_plan_getitems_filter_query(self):
         pass
 
-    def test_plan_edit_changes_interval(self):
+    def test_plan_getitems_filter_updated_since(self):
         pass
 
-    def test_plan_edit_changes_currency(self):
+    def test_plan_getitems_filter_sort(self):
         pass
-
-    def test_plan_edit_changes_value_cents(self):
-        pass
-
-    def test_plan_edit_changes_prices_currency(self):
-        pass
-
-    def test_plan_edit_changes_prices_value_cents(self):
-        pass
-
-    def test_plan_edit_changes_features_name(self):
-        pass
-
-    def test_plan_edit_changes_features_identifier(self):
-        pass
-
-    def test_plan_edit_changes_features_value(self):
-        pass
-
-
 
 if __name__ == '__main__':
         unittest.main()
