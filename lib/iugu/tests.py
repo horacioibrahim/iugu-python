@@ -666,6 +666,7 @@ class TestInvoice(unittest.TestCase):
         invoice_3.remove()
         self.assertEqual(keep_checker.id, skipped.id)
 
+
 class TestPlans(unittest.TestCase):
 
     def setUp(self):
@@ -949,19 +950,92 @@ class TestPlans(unittest.TestCase):
         plan_returned.remove()
 
     def test_plan_getitems_filter_limit(self):
-        pass
+        # creating a plan with features
+        salt = str(randint(1, 199)) + self.identifier
+        plan = plans.IuguPlan()
+        plan_a = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=1000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_b = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=2000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_c = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=3000)
+
+        all_plans = plans.IuguPlan.getitems(limit=3)
+        self.assertEqual(len(all_plans), 3)
+        plan_a.remove()
+        plan_b.remove()
+        plan_c.remove()
 
     def test_plan_getitems_filter_skip(self):
-        pass
+        # creating a plan with features
+        salt = str(randint(1, 199)) + self.identifier
+        plan = plans.IuguPlan()
+        plan_a = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=1000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_b = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=2000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_c = plan.create(name="Get Items...",
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=3000)
+
+        all_plans_limit = plans.IuguPlan.getitems(limit=3)
+        all_plans_skip = plans.IuguPlan.getitems(skip=2, limit=3)
+        self.assertEqual(all_plans_limit[2].id, all_plans_skip[0].id)
+        plan_a.remove()
+        plan_b.remove()
+        plan_c.remove()
 
     def test_plan_getitems_filter_query(self):
-        pass
+        salt = str(randint(1, 199)) + self.identifier
+        name_repeated = salt
+        plan = plans.IuguPlan()
+        plan_a = plan.create(name=name_repeated,
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=1000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_b = plan.create(name=name_repeated,
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=2000)
+        salt = str(randint(1, 199)) + self.identifier
+        plan_c = plan.create(name=name_repeated,
+                                    identifier=salt, interval=2,
+                                    interval_type="weeks", currency="BRL",
+                                    value_cents=3000)
+        sleep(3) # waiting API to keep data
+        all_filter_query = plans.IuguPlan.getitems(query=name_repeated)
+        self.assertEqual(all_filter_query[0].name, name_repeated)
+        self.assertEqual(len(all_filter_query), 3)
+        plan_a.remove()
+        plan_b.remove()
+        plan_c.remove()
 
+    @unittest.skip("TODO support this test")
     def test_plan_getitems_filter_updated_since(self):
         pass
-
+    @unittest.skip("Sort not work fine. Waiting support of API providers")
     def test_plan_getitems_filter_sort(self):
         pass
 
+
+class TestSubscriptions(unittest.TestCase):
+
+    pass
 if __name__ == '__main__':
         unittest.main()
