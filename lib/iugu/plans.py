@@ -97,14 +97,16 @@ class IuguPlan(object):
                 for price in self.prices:
                     data.extend(price.to_data())
             else:
-                raise TypeError("The fields prices must be a list of obj Price")
+                raise errors.IuguPlansException(value="The fields prices must "\
+                 "be a list of obj Price")
 
         if self.features:
             if isinstance(self.features, list):
                 for feature in self.features:
                     data.extend(feature.to_data())
             else:
-                raise TypeError("The fields features must be a list of obj Feature")
+                raise errors.IuguPlansException(value="The fields features " \
+                    "must be a list of obj Feature")
 
         self._data = data
 

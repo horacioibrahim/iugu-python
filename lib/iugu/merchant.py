@@ -162,26 +162,41 @@ class Item(object):
         self.created_at = kwargs.get("created_at")
         self.updated_at = kwargs.get("updated_at")
         self.price = kwargs.get("price")
+        #useful for subscriptions subitems
+        self.recurrent = kwargs.get("recurrent") # boolean
+        self.total = kwargs.get("total")
+        # command for eliminate an item
         self.destroy = None
 
     def __repr__(self):
         return "%s" % self.description
 
-    def to_data(self):
+    def to_data(self, is_subscription=False):
         """
         Returns tuples to encode with urllib.urlencode
         """
         as_tuple = []
+        key = "items"
+
+        if is_subscription is True:
+            key = "subitems" # run to adapt the API subscription
 
         if self.id:
-            as_tuple.append(("items[][id]", self.id ))
+            as_tuple.append(("{items}[][id]".format(items=key), self.id))
 
-        as_tuple.append(("items[][description]", self.description))
-        as_tuple.append(("items[][quantity]", self.quantity))
-        as_tuple.append(("items[][price_cents]", self.price_cents))
+        as_tuple.append(("{items}[][description]".format(items=key),
+                         self.description))
+        as_tuple.append(("{items}[][quantity]".format(items=key),
+                         self.quantity))
+        as_tuple.append(("{items}[][price_cents]".format(items=key),
+                         self.price_cents))
+
+        if self.recurrent:
+            as_tuple.append(("{items}[][recurrent]".format(items=key),
+                             self.recurrent))
 
         if self.destroy:
-            as_tuple.append(("items[][_destroy]", "true"))
+            as_tuple.append(("{items}[][_destroy]".format(items=key), "true"))
 
         return as_tuple
 

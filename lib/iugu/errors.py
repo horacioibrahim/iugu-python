@@ -34,3 +34,11 @@ class IuguPlansException(BaseException):
 
     def __str__(self):
         return repr(self.value)
+
+class IuguSubscriptionsException(BaseException):
+
+    def __init__(self, value="Invalid request for Subscriptions"):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
