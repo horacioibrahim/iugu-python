@@ -168,7 +168,7 @@ class Item(object):
         # command for eliminate an item
         self.destroy = None
 
-    def __repr__(self):
+    def __str__(self):
         return "%s" % self.description
 
     def to_data(self, is_subscription=False):
@@ -201,4 +201,7 @@ class Item(object):
         return as_tuple
 
     def remove(self):
+        """
+        Marks the item that will removed after save an invoice
+        """
         self.destroy = True

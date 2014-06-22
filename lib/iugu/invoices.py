@@ -40,6 +40,7 @@ class IuguInvoice(object):
         self.logs = kwargs.get("logs") # TODO: create a class/object
         # TODO: descriptors (getter/setter) for items
         _items = kwargs.get("items")
+        self.items = None
 
         if _items:
             _list_items = []
@@ -51,6 +52,7 @@ class IuguInvoice(object):
             if item:
                 assert isinstance(item, merchant.Item), "item must be instance of Item"
                 self.items = item
+
 
         self.variables = kwargs.get("variables")
         self.logs = kwargs.get("logs")
@@ -256,13 +258,13 @@ class IuguInvoice(object):
 
         invoices = self.conn.get(urn, data)
         invoices_objects = []
-        for invoice_iem in invoices["items"]:
-            obj_invoice = IuguInvoice(**invoice_iem)
+        for invoice_item in invoices["items"]:
+            obj_invoice = IuguInvoice(**invoice_item)
             invoices_objects.append(obj_invoice)
 
         return invoices_objects
 
-    def set(self, invoice_id=None, email=None, due_date=None,
+    def set(self, invoice_id, email=None, due_date=None,
                return_url=None, expired_url=None, notification_url=None,
                tax_cents=None, discount_cents=None, customer_id=None,
                ignore_due_email=False, subscription_id=None, credits=None,
@@ -274,8 +276,14 @@ class IuguInvoice(object):
         # to declare all variables local before locals().copy()
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
+        changes_count = len([ k for k, v in kwargs_local.items() if v is not None])
+
+        if changes_count < 3:
+            raise errors.IuguInvoiceException(value="At least one field is "\
+                "required to edit/change")
 
         self.data = kwargs_local
+
 
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.conn.put(urn, self.data)

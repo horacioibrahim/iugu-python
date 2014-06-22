@@ -9,7 +9,7 @@ from hashlib import md5
 from types import StringType
 
 # python-iugu package modules
-import merchant, customer, config, invoices, errors, plans
+import merchant, customers, config, invoices, errors, plans, subscriptions
 
 
 class TestMerchant(unittest.TestCase):
@@ -57,14 +57,20 @@ class TestCustomer(unittest.TestCase):
 
 
     def test_create_customer_basic_info(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         c = consumer.create()
         c.remove()
         self.assertEqual(consumer.email, c.email)
 
+    def test_create_customer_basic_email(self):
+        consumer = customers.IuguCustomer()
+        c = consumer.create(email=self.random_user_email)
+        c.remove()
+        self.assertEqual(consumer.email, c.email)
+
     def test_create_customer_extra_attrs(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         c = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -72,7 +78,7 @@ class TestCustomer(unittest.TestCase):
         self.assertEqual(consumer.email, c.email)
 
     def test_get_customer(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create()
         c = consumer.get(customer_id=consumer_new.id)
@@ -80,7 +86,7 @@ class TestCustomer(unittest.TestCase):
         self.assertEqual(consumer.email, c.email)
 
     def test_set_customer(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -89,7 +95,7 @@ class TestCustomer(unittest.TestCase):
         self.assertEqual(c.name, "Lago Mario")
 
     def test_customer_save(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -104,7 +110,7 @@ class TestCustomer(unittest.TestCase):
         self.assertEqual(check_user.name, "Ibrahim Horacio")
 
     def test_customer_delete_by_id(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -113,7 +119,7 @@ class TestCustomer(unittest.TestCase):
                                 consumer_new.id)
 
     def test_customer_delete_instance(self):
-        consumer = customer.IuguCustomer(api_mode_test=True,
+        consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
                                      custom_variables=["local", "cup"])
@@ -133,7 +139,7 @@ class TestCustomerLists(unittest.TestCase):
         self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
 
-        self.c = customer.IuguCustomer(api_mode_test=True,
+        self.c = customers.IuguCustomer(api_mode_test=True,
                                   api_token=self.API_TOKEN_TEST,
                                   email=self.random_user_email)
 
@@ -160,21 +166,21 @@ class TestCustomerLists(unittest.TestCase):
         self.three.remove()
 
     def test_getitems(self):
-        customers = self.c.getitems()
-        self.assertEqual(type(customers), list)
+        customers_list = self.c.getitems()
+        self.assertEqual(type(customers_list), list)
 
     def test_getitems_limit(self):
         # get items with auto DESC order
-        customers = self.c.getitems(limit=2)
-        self.assertEqual(len(customers), 2)
+        customers_list = self.c.getitems(limit=2)
+        self.assertEqual(len(customers_list), 2)
 
     def test_getitems_start(self):
         # get items with auto DESC order
         sleep(2)
-        customers = self.c.getitems(limit=3) # get latest three customers
-        reference_customer = customers[2].name
-        customers = self.c.getitems(skip=2)
-        self.assertEqual(customers[0].name, reference_customer)
+        customers_list = self.c.getitems(limit=3) # get latest three customers
+        reference_customer = customers_list[2].name
+        customers_list = self.c.getitems(skip=2)
+        self.assertEqual(customers_list[0].name, reference_customer)
 
     def test_getitems_query_by_match_in_name(self):
         hmd5 = md5()
@@ -220,32 +226,32 @@ class TestCustomerLists(unittest.TestCase):
     def test_getitems_sort(self):
         sleep(1) # Again. It's need
         # Useful to test database with empty data (previous data, old tests)
-        customers = self.c.getitems(sort="name")
+        customers_list = self.c.getitems(sort="name")
 
         # monkey skip
-        if len(customers) < 4:
-            self.assertEqual(customers[0].name, self.p1)
+        if len(customers_list) < 4:
+            self.assertEqual(customers_list[0].name, self.p1)
         else:
             raise TypeError("API Database is not empty. This test isn't useful. " \
                 "Use unittest.skip() before this method.")
 
     def test_getitems_created_at_from(self):
         sleep(1)
-        customers = self.c.getitems(created_at_from=self.three.created_at)
-        self.assertEqual(customers[0].id, self.three.id)
+        customers_list = self.c.getitems(created_at_from=self.three.created_at)
+        self.assertEqual(customers_list[0].id, self.three.id)
 
     # Uncomment the next one line to disable the test
     # @unittest.skip("Real-time interval not reached")
     def test_getitems_created_at_to(self):
         sleep(1)
-        customers = self.c.getitems(created_at_to=self.one.created_at)
-        self.assertEqual(customers[0].id, self.three.id)
+        customers_list = self.c.getitems(created_at_to=self.one.created_at)
+        self.assertEqual(customers_list[0].id, self.three.id)
 
     def test_getitems_updated_since(self):
         # get items with auto DESC order
         sleep(1)
-        customers = self.c.getitems(updated_since=self.three.created_at)
-        self.assertEqual(customers[0].id, self.three.id)
+        customers_list = self.c.getitems(updated_since=self.three.created_at)
+        self.assertEqual(customers_list[0].id, self.three.id)
 
 
 class TestCustomerPayments(unittest.TestCase):
@@ -257,7 +263,7 @@ class TestCustomerPayments(unittest.TestCase):
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
         self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
-        self.client = customer.IuguCustomer(email="test@testmail.com")
+        self.client = customers.IuguCustomer(email="test@testmail.com")
         self.customer = self.client.create()
 
         self.instance_payment = self.customer.payment.create(description="New payment method",
@@ -280,7 +286,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2014)
         instance_payment.remove()
-        self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(instance_payment, customers.IuguPaymentMethod))
 
     def test_create_payment_method_existent_user_by_get(self):
         """ Test create payment method of existent user returned by get()
@@ -296,7 +302,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2015)
         instance_payment.remove()
-        self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(instance_payment, customers.IuguPaymentMethod))
 
     def test_create_payment_method_existent_user_by_getitems(self):
         """ Test create payment method of existent user returned by getitems()
@@ -311,7 +317,7 @@ class TestCustomerPayments(unittest.TestCase):
                                      first_name="Joao", last_name="Maria",
                                      month=12, year=2016)
         instance_payment.remove()
-        self.assertTrue(isinstance(instance_payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(instance_payment, customers.IuguPaymentMethod))
 
     def test_create_payment_method_non_existent_user_by_instance(self):
         """ Test create payment method to instance's user before it was
@@ -337,14 +343,14 @@ class TestCustomerPayments(unittest.TestCase):
         id = self.instance_payment.id
         # two args passed
         payment = self.client.payment.get(id, customer_id=self.customer.id)
-        self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(payment, customers.IuguPaymentMethod))
 
     def test_get_payment_by_customer(self):
         # Test get payment by instance's customer (existent in API)
         id = self.instance_payment.id
         # one arg passed. user is implicit to customer
         payment = self.customer.payment.get(id)
-        self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(payment, customers.IuguPaymentMethod))
 
     def test_set_payment_by_payment_id_customer_id(self):
         # Changes payment method base payment_id and customer_id
@@ -352,7 +358,7 @@ class TestCustomerPayments(unittest.TestCase):
         # two args passed
         payment = self.client.payment.set(id, "New Card Name",
                                           customer_id=self.customer.id)
-        self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(payment, customers.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
         self.assertEqual(payment_test.description, payment.description)
 
@@ -361,7 +367,7 @@ class TestCustomerPayments(unittest.TestCase):
         id = self.instance_payment.id
         # one arg passed. user is implicit to customer
         payment = self.customer.payment.set(id, "New Card Name")
-        self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(payment, customers.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
         self.assertEqual(payment_test.description, payment.description)
 
@@ -371,7 +377,7 @@ class TestCustomerPayments(unittest.TestCase):
         self.instance_payment.description = "New Card Name"
         # no args passed. To payment method instance this is implicit
         payment = self.instance_payment.save()
-        self.assertTrue(isinstance(payment, customer.IuguPaymentMethod))
+        self.assertTrue(isinstance(payment, customers.IuguPaymentMethod))
         payment_test = self.customer.payment.get(payment.id)
         self.assertEqual(payment_test.description, payment.description)
 
@@ -424,7 +430,7 @@ class TestCustomerPayments(unittest.TestCase):
         list_of_payments = self.customer.payment.getitems()
         self.assertTrue(isinstance(list_of_payments, list))
         self.assertTrue(isinstance(list_of_payments[0],
-                                   customer.IuguPaymentMethod))
+                                   customers.IuguPaymentMethod))
 
 
 class TestInvoice(unittest.TestCase):
@@ -436,13 +442,12 @@ class TestInvoice(unittest.TestCase):
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
         self.customer_email = email
         # create a customer for tests
-        c = customer.IuguCustomer(api_mode_test=True,
-                                         api_token=config.API_TOKEN_TEST,
-                                         email=email)
-        self.consumer = c.create()
+        c = customers.IuguCustomer()
+        self.consumer = c.create(email="client@customer.com")
 
         # create a invoice
         item = merchant.Item("Prod 1", 1, 1190)
+        self.item = item
         self.invoice_obj = invoices.IuguInvoice(email=self.customer_email,
                                  item=item, due_date="30/11/2014")
         self.invoice = self.invoice_obj.create(draft=True)
@@ -451,6 +456,21 @@ class TestInvoice(unittest.TestCase):
         if self.invoice.id: # if id is None already was removed
             self.invoice.remove()
         self.consumer.remove()
+
+    def test_invoice_raise_required_email(self):
+        i = invoices.IuguInvoice()
+        self.assertRaises(errors.IuguInvoiceException, i.create,
+                          due_date="30/11/2020", items=self.item)
+
+    def test_invoice_raise_required_due_date(self):
+        i = invoices.IuguInvoice()
+        self.assertRaises(errors.IuguInvoiceException, i.create,
+                          email="h@gmail.com", items=self.item)
+
+    def test_invoice_raise_required_items(self):
+        i = invoices.IuguInvoice()
+        self.assertRaises(errors.IuguInvoiceException, i.create,
+                          due_date="30/11/2020", email="h@gmail.com")
 
     def test_invoice_create_basic(self):
         self.assertTrue(isinstance(self.invoice, invoices.IuguInvoice))
@@ -505,6 +525,11 @@ class TestInvoice(unittest.TestCase):
         invoice_edited = self.invoice_obj.set(invoice_id=id,
                                               return_url=return_url)
         self.assertEqual(invoice_edited.return_url, return_url)
+
+    def test_invoice_edit_with_set_only_id(self):
+        id = self.invoice.id
+        i = invoices.IuguInvoice()
+        self.assertRaises(errors.IuguInvoiceException, i.set, id)
 
     @unittest.skip("It isn't support by API")
     def test_invoice_edit_expired_url_with_set(self):
@@ -578,9 +603,10 @@ class TestInvoice(unittest.TestCase):
         self.assertEqual(res.items[0].description, "Prod Saved by Instance")
 
     def test_invoice_destroy_item(self):
+        # Removes one item, the unique, created in invoice
         self.invoice.items[0].remove()
         re_invoice = self.invoice.save()
-        self.assertNotIn("items", re_invoice.__dict__.keys())
+        self.assertEqual(re_invoice.items, None)
 
     def test_invoice_remove(self):
         # wait webservice response time
@@ -1036,6 +1062,105 @@ class TestPlans(unittest.TestCase):
 
 class TestSubscriptions(unittest.TestCase):
 
+    def setUp(self):
+        seed = randint(1, 299)
+        md5_hash = md5()
+        md5_hash.update(str(seed))
+        plan_id_random = md5_hash.hexdigest()[:8]
+        plan_name = "Subs Plan %s" % plan_id_random
+        self.plan_new = plans.IuguPlan().create(plan_name, plan_id_random,
+                                                1, "weeks", "BRL", 9900)
+        name = "Ze %s" % plan_id_random
+        email = "{name}@example.com".format(name=plan_id_random)
+        self.client = customers.IuguCustomer().create(name=name, email=email)
+
+    def tearDown(self):
+        self.plan_new.remove()
+        self.client.remove()
+
+    def test_subscription_create(self):
+        # Test to create a subscription only client_id and plan_identifier
+        p_obj = subscriptions.IuguSubscriptions()
+        subscription_new = p_obj.create(self.client.id, self.plan_new.identifier)
+        self.assertIsInstance(subscription_new, subscriptions.IuguSubscriptions)
+        self.assertEqual(subscription_new.plan_identifier, self.plan_new.identifier)
+        subscription_new.remove()
+
+    def test_subscription_remove(self):
+        # Test to remove subscription
+        p_obj = subscriptions.IuguSubscriptions()
+        subscription_new = p_obj.create(self.client.id, self.plan_new.identifier)
+        sid = subscription_new.id
+        subscription_new.remove()
+        self.assertRaises(errors.IuguGeneralException,
+                                subscriptions.IuguSubscriptions.get, sid)
+
+    def test_subscription_set_plan(self):
+        # Test to change an existent subscription
+        p_obj_t1 = subscriptions.IuguSubscriptions()
+        subscription = p_obj_t1.create(self.client.id, self.plan_new.identifier)
+        sid = subscription.id
+        plan_identifier = self.plan_new.identifier + str("_Newest_ID")
+        # changes to this new plan
+        plan_newest = plans.IuguPlan().create("Plan Name: Newest", plan_identifier,
+                                               1, "months", "BRL", 5000)
+        # editing...
+        subscription = subscriptions.IuguSubscriptions().set(sid,
+                                        plan_identifier=plan_newest.identifier)
+        self.assertEqual(subscription.plan_identifier, plan_identifier)
+        subscription.remove()
+
+    def test_subscription_set_customer_id(self):
+        # Test if customer_id changed
+        pass
+
+    def test_subscription_set_expires_at(self):
+        # Test if expires_at was changed
+        pass
+
+    def test_subscription_set_price_cents(self):
+        # Test if customer_id changed
+        pass
+
+    def test_subscription_set_suspended(self):
+        # Test if price_cents was changed
+        pass
+
+    def test_subscription_set_skip_charge(self):
+        # Test if skip_charge was marked
+        pass
+
+    def test_subscription_set_subitems_description(self):
+        # Test if subitem/item descriptions was changed
+        pass
+
+    def test_subscription_set_subitems_price_cents(self):
+        # Test if subitem/item price_cents was  changed
+        pass
+
+    def test_subscription_set_subitems_quantity(self):
+        # Test if subitem/item quantity was  changed
+        pass
+
+    def test_subscription_set_subitems_recurrent(self):
+        # Test if subitem/item recurrent was  changed
+        pass
+
+    def test_subscription_set_subitems_destroy(self):
+        # Test if subitem/item was erased
+        pass
+
+    def test_subscription_set_custom_variables(self):
+        # Test if custom_variables changed
+        pass
+
+    def test_subscription_set_credits_cycle(self):
+        # Test if credits_cycle changed
+        pass
+
+    def test_subscription_set_credits_min(self):
+        # Test if credits_min changed
+        pass
     pass
 if __name__ == '__main__':
         unittest.main()
