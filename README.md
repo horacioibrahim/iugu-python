@@ -51,15 +51,13 @@ client.create_charge(EMAIL_CUSTOMER, item)
 ### Customer operations ###
 ```python
 from iugu.customer import IuguCustomer
-client = IuguCustomer(api_mode_test=True,
-                      api_token='YOUR API KEY',
-                      email='YOUR EMAIL')
+client = IuguCustomer()
 customer = client.create(email='your_customer@example.com')
  => https://api.iugu.com/v1/customers
 ```
 Now you can to retrieve customer
 ```
-client.get(customer_id='ID')
+client.get(customer_id)
 ```
 You can edit existent customer
 ```
@@ -80,22 +78,55 @@ customer.remove() # by current instance
 Get all customer
 ```python
 from iugu.customer import IuguCustomer
-client = IuguCustomer(api_mode_test=True,
-                      api_token='YOUR API KEY',
-                      email='YOUR EMAIL')
+client = IuguCustomer()
 # your flavor of options
 # client.getitems([limit, skip, query, sort, created_at_from, created_at_to,
 #                updated_since])
 
 Use one option per time. Samples:
 client.getitems(limit=30) # Get most recent (latest) 30 customers
-client.getitems(skip=14) # Skip X customers. uUeful for pagination
+client.getitems(skip=14) # Skip X customers. Useful for pagination
 client.getitems(sort="-name") # Sort by field >>name<< (descending)
 client.getitems(sort="name") # Sort by field >>name<< (ascending)
 client.getitems(updated_since="2014-06-05T15:02:40-03:00")
 
  => http://iugu.com/referencias/api#listar-os-clientes
 ```
+### Operations with Invoices ###
+Create an invoice
+```
+from iugu.invoices import IuguInvoice
+from iugu.merchant import Item
+
+item = Item("Curso: High Self Learning", 1, 6900) # qtd:1; price: 69,00
+invoice_obj = IuguInvoice()
+new_invoice = invoice_obj.create(due_date='24/06/2014',
+                                    email='customer@example.com', items=item)
+```
+Get invoice by id
+```
+# not is need previous instance/obj
+invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
+```
+Get all invoices
+```
+# not is need previous instance/obj
+invoices = IuguInvoice.getitems() # outcomes list of invoices
+```
+Get all with filter
+```
+invoices = IuguInvoice.getitems(limit=10)
+invoices = IuguInvoice.getitems(skp=5)
+invoices = IuguInvoice.getitems(sort="-email") # DESC
+invoices = IuguInvoice.getitems(sort="email") # ASC
+...
+```
+Edit/change invoice
+```
+invoice = IuguInvoice.set()
+```
+
+
 
 ### References ###
 - API Document: http://iugu.com/referencias/api
