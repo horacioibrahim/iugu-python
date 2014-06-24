@@ -34,8 +34,9 @@ class IuguSubscriptions(base.IuguApi):
         self.plan_ref = kwargs.get("plan_ref")
         self.active = kwargs.get("active")
         self.in_trial = kwargs.get("in_trial")
-        self.recent_invoices = kwargs.get("recent_invoices")
+        self.recent_invoices = kwargs.get("recent_invoices") # only resume of invoice
         self.logs = kwargs.get("logs")
+        self._type = kwargs.get("_type") # facilities to verify if credit_base or general
 
         if isinstance(self._subitems, list):
             for item in self._subitems:
@@ -44,7 +45,7 @@ class IuguSubscriptions(base.IuguApi):
 
     @staticmethod
     def is_credit_based(response):
-        # Checks if subscription is credit_based type
+        # Checks if HTTP response of API subscription is credit_based type
         if "credits_based" in response and response["credits_based"] == True:
             return True
         return False
@@ -124,7 +125,7 @@ class IuguSubscriptions(base.IuguApi):
         if self.skip_charge is not None:
             value_skip_charge = str(self.skip_charge)
             value_skip_charge = value_skip_charge.lower()
-            data.append(("suspended", value_skip_charge))
+            data.append(("skip_charge", value_skip_charge))
 
         self._data = data
 
@@ -154,8 +155,10 @@ class IuguSubscriptions(base.IuguApi):
         response = self._conn.get(urn, [])
 
         if self.is_credit_based(response):
+            response["_type"] = "credit_based"
             return SubscriptionCreditsBased(**response)
 
+        response["_type"] = "general"
         return IuguSubscriptions(**response)
 
     @classmethod
@@ -198,9 +201,11 @@ class IuguSubscriptions(base.IuguApi):
         subscriptions_objs = []
         for s in subscriptions["items"]:
             # add items in list but before verifies if credit_based
-            if IuguSubscriptions.is_credit_based(s):
+            if self.is_credit_based(s):
+                s["_type"] = "credit_based"
                 obj_subscription = SubscriptionCreditsBased(**s)
             else:
+                s["_type"] = "general"
                 obj_subscription = IuguSubscriptions(**s)
 
             subscriptions_objs.append(obj_subscription)
@@ -208,10 +213,10 @@ class IuguSubscriptions(base.IuguApi):
         return subscriptions_objs
 
     def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            only_on_charge_success=False, subitems=None, custom_variables=None,
-            suspended=False, skip_charge=False):
+            subitems=None, custom_variables=None, suspended=False,
+            skip_charge=None):
         """
-        Changes an existent subscription no credit_based
+        Returns changed an existent subscription no credit_based
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         kwargs_local = locals().copy()
@@ -221,15 +226,24 @@ class IuguSubscriptions(base.IuguApi):
         return IuguSubscriptions(**response)
 
     def save(self):
-        sid = self.id
-        kwargs = {}
+        """ Saves and returns an instance of this class that was persisted,
+        before, in API or raise error for no instance.
+        """
+        if self.id:
+            sid = self.id
+        else:
+            raise errors.IuguSubscriptionsException(value="Save is support "\
+                        "only to returned API object.")
 
-        # TODO ineffective approach
+        kwargs = {}
+        # TODO: to improve this ineffective approach
         for k, v in self.__dict__.items():
-            if k == "customer_id" or k == "plan_identifier" or k == "expires_at" \
-                or k == "only_on_charge_success" or k == "subitems" or \
-                k == "custom_variables":
-                kwargs[k] = v
+            if v is not None:
+                if k == "customer_id" or k == "plan_identifier" or \
+                    k == "expires_at" or k == "subitems" or \
+                    k == "custom_variables" or k == "suspended" or \
+                    k == "skip_charge":
+                    kwargs[k] = v
 
         return self.set(sid, **kwargs)
 
@@ -269,14 +283,14 @@ class SubscriptionCreditsBased(IuguSubscriptions):
         kwargs_local.pop('self')
         urn = "/v1/subscriptions"
         self.data = kwargs_local
-        print self.data
         response = self._conn.post(urn, self.data)
+        response["_type"] = "credit_based"
         return SubscriptionCreditsBased(**response)
 
-    def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            only_on_charge_success=False, subitems=None, custom_variables=None,
-            suspended=False, skip_charge=False, price_cents=None,
-            credits_cycle=None, credits_min=None):
+    def set(self, sid, customer_id=None, expires_at=None,
+            subitems=None, custom_variables=None, suspended=False,
+            skip_charge=None, price_cents=None, credits_cycle=None,
+            credits_min=None):
         """
         Changes an existent subscription no credit_based
         """
@@ -285,4 +299,28 @@ class SubscriptionCreditsBased(IuguSubscriptions):
         kwargs_local.pop('self')
         self.data = kwargs_local
         response = self._conn.put(urn, self.data)
+        response["_type"] = "credit_based"
         return SubscriptionCreditsBased(**response)
+
+    def save(self):
+        """ Saves an instance of this class that was persisted, before, in API
+        or raise error if no instance
+        """
+        if self.id:
+            sid = self.id
+        else:
+            raise errors.IuguSubscriptionsException(value="Save is support "\
+                        "only to returned API object.")
+
+        kwargs = {}
+        # TODO: to improve this ineffective approach
+        for k, v in self.__dict__.items():
+            if v is not None:
+                if k == "customer_id" or k == "expires_at" or \
+                    k == "subitems" or k == "custom_variables" or \
+                    k == "suspended" or k == "skip_charge" or \
+                    k == "price_cents" or k == "credits_cycle" or \
+                    k == "credits_min":
+                    kwargs[k] = v
+
+        return self.set(sid, **kwargs)

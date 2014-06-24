@@ -1105,6 +1105,29 @@ class TestSubscriptions(unittest.TestCase):
         self.assertEqual(subscription_new.plan_identifier, self.plan_new.identifier)
         subscription_new.remove()
 
+    def test_subscription_create_only_on_charge_success_with_payment(self):
+        # Test to create subscriptions with charge only
+        customer = customers.IuguCustomer().create(name="Pay now",
+                                    email="pay_now@local.com")
+        customer.payment.create(description="Payment X",
+                                number="4111111111111111",
+                                verification_value='123',
+                                first_name="Romario", last_name="Baixo",
+                                month=12, year=2018)
+        p_obj = subscriptions.IuguSubscriptions()
+        new_subscription = p_obj.create(customer.id, self.plan_new.identifier,
+                     only_on_charge_success=True)
+        self.assertEqual(new_subscription.recent_invoices[0]["status"], "paid")
+        new_subscription.remove()
+        customer.remove()
+
+    def test_subscription_create_only_on_charge_success_less_payment(self):
+        # Test to create subscriptions with charge only
+        p_obj = subscriptions.IuguSubscriptions()
+        self.assertRaises(errors.IuguGeneralException, p_obj.create,
+                          self.customer.id, self.plan_new.identifier,
+                          only_on_charge_success=True)
+
     def test_subscription_remove(self):
         # Test to remove subscription
         p_obj = subscriptions.IuguSubscriptions()
@@ -1345,6 +1368,114 @@ class TestSubscriptions(unittest.TestCase):
         subscription.remove()
 
     # Test save method
+
+    @unittest.skip("This is not support by API. Return not found")
+    def test_subscription_save_customer_id(self):
+        customer = customers.IuguCustomer().create(name="Subs save",
+                                                   email="subs_save@local.com")
+        self.subscription.customer_id = customer.id
+        obj = self.subscription.save()
+        self.assertEqual(customer.id, obj.customer_id)
+        customer.remove()
+
+    def test_subscription_save_expires_at(self):
+        self.subscription.expires_at = "12/12/2020"
+        obj = self.subscription.save()
+        self.assertEqual(obj.expires_at, "2020-12-12")
+
+    def test_subscription_save_subitems(self):
+        # Test if to save a new item
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems[0].description,
+                          subitem.description)
+
+    def test_subscription_save_subitems_description(self):
+        # Test if subitem/item descriptions was changed
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        new_subscription = self.subscription.save()
+        item_with_id = new_subscription.subitems[0]
+        item_with_id.description = "Subitems Edited"
+        self.subscription.subitems = [item_with_id]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems[0].description,
+                         item_with_id.description)
+
+    def test_subscription_save_subitems_price_cents(self):
+        # Test if subitem/item price_cents was  changed
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        new_subscription = self.subscription.save()
+        item_with_id = new_subscription.subitems[0]
+        item_with_id.price_cents = 2900
+        self.subscription.subitems = [item_with_id,]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems[0].price_cents,
+                         item_with_id.price_cents)
+
+    def test_subscription_save_subitems_quantity(self):
+        # Test if subitem/item quantity was  changed
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        new_subscription = self.subscription.save()
+        item_with_id = new_subscription.subitems[0]
+        item_with_id.quantity = 4
+        self.subscription.subitems = [item_with_id,]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems[0].quantity,
+                         item_with_id.quantity)
+
+    def test_subscription_save_subitems_recurrent(self):
+        # Test if subitem/item recurrent was  changed
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        new_subscription = self.subscription.save()
+        item_with_id = new_subscription.subitems[0]
+        item_with_id.recurrent = True
+        self.subscription.subitems = [item_with_id,]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems[0].recurrent,
+                         item_with_id.recurrent)
+
+    def test_subscription_save_subitems__destroy(self):
+        # Test if subitem/item was erased
+        subitem = merchant.Item("Subitems", 1, 2345)
+        self.subscription.subitems = [subitem,]
+        new_subscription = self.subscription.save()
+        item_with_id = new_subscription.subitems[0]
+        item_with_id.destroy = True
+        self.subscription.subitems = [item_with_id,]
+        obj = self.subscription.save()
+        self.assertEqual(obj.subitems, [])
+
+    def test_subscription_save_custom_variables(self):
+        pass
+
+    def test_subscription_save_suspended(self):
+        self.subscription.suspended = True
+        obj = self.subscription.save()
+        self.assertEqual(obj.suspended, True)
+
+    # TODO: criar logica de test ver o que muda realmente
+    def test_subscription_save_skip_charge(self):
+        pass
+
+    def test_subscription_save_price_cents(self):
+        self.subscription.price_cents = 8188
+        obj = self.subscription.save()
+        self.assertEqual(obj.price_cents, 8188)
+
+    def test_subscription_save_credits_cycle(self):
+        self.subscription.credits_cycle = 5
+        obj = self.subscription.save()
+        self.assertEqual(obj.credits_cycle, 5)
+
+    def test_subscription_save_credits_min(self):
+        self.subscription.credits_min = 9000
+        obj = self.subscription.save()
+        self.assertEqual(obj.credits_min, 9000)
 
 
 if __name__ == '__main__':
