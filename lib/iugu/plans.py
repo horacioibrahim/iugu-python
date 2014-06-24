@@ -6,7 +6,7 @@ import base, config, errors
 class IuguPlan(object):
 
     API_TOKEN = config.API_TOKEN
-    conn = base.IuguRequests()
+    __conn = base.IuguRequests()
 
     def __init__(self, **kwargs):
         self.id = kwargs.get("id")
@@ -167,7 +167,7 @@ class IuguPlan(object):
         kwargs_local = locals().copy()
         kwargs_local.pop('self') # prevent error of multiple value for args
         self.data = kwargs_local
-        response = self.conn.post(urn, self.data)
+        response = self.__conn.post(urn, self.data)
 
         return IuguPlan(**response)
 
@@ -181,27 +181,27 @@ class IuguPlan(object):
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
-        response = self.conn.put(urn, self.data)
+        response = self.__conn.put(urn, self.data)
         return IuguPlan(**response)
 
     def save(self):
         urn = "/v1/plans/{plan_id}".format(plan_id=self.id)
         self.data = self.__dict__
-        response = self.conn.put(urn, self.data)
+        response = self.__conn.put(urn, self.data)
         return IuguPlan(**response)
 
     @classmethod
     def get(self, plan_id):
         data = []
         urn = "/v1/plans/{plan_id}".format(plan_id=plan_id)
-        response = self.conn.get(urn, data)
+        response = self.__conn.get(urn, data)
         return IuguPlan(**response)
 
     @classmethod
     def get_by_identifier(self, identifier):
         data = []
         urn = "/v1/plans/identifier/{identifier}".format(identifier=identifier)
-        response = self.conn.get(urn, data)
+        response = self.__conn.get(urn, data)
         return IuguPlan(**response)
 
     @classmethod
@@ -235,7 +235,7 @@ class IuguPlan(object):
                 key = "sortBy[{field}]".format(field=sort)
                 data.append((key, "asc"))
 
-        plans = self.conn.get(urn, data)
+        plans = self.__conn.get(urn, data)
         plans_objects = []
         for plan_item in plans["items"]:
             obj_plan = IuguPlan(**plan_item)
@@ -256,7 +256,7 @@ class IuguPlan(object):
             raise errors.IuguPlansException(value="Instance or plan id is required")
 
         urn = "/v1/plans/{plan_id}".format(plan_id=to_remove)
-        response = self.conn.delete(urn, [])
+        response = self.__conn.delete(urn, [])
         # check if result can to generate instance of IuguPlan
         obj = IuguPlan(**response)
 

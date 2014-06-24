@@ -6,7 +6,7 @@ import base, config, errors
 
 class IuguCustomer(base.IuguApi):
 
-    conn = base.IuguRequests()
+    __conn = base.IuguRequests()
 
     def __init__(self, **options):
         """
@@ -57,7 +57,7 @@ class IuguCustomer(base.IuguApi):
             for custom_var in custom_variables:
                 data.append(("custom_variables[][name]", custom_var))
 
-        customer = self.conn.post(urn, data)
+        customer = self.__conn.post(urn, data)
 
         instance = IuguCustomer(**customer)
         # instance.api_token = self.API_TOKEN
@@ -71,7 +71,7 @@ class IuguCustomer(base.IuguApi):
         # data fields of charge
         # data.append(("api_token", self.api_token))
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
-        customer = self.conn.get(urn, data)
+        customer = self.__conn.get(urn, data)
         instance = IuguCustomer(**customer)
         instance.api_token = self.API_TOKEN
 
@@ -96,7 +96,7 @@ class IuguCustomer(base.IuguApi):
         #    value = custom_var[1]
         #    data.append((key, value))
 
-        customer = self.conn.put(urn, data)
+        customer = self.__conn.put(urn, data)
 
         return IuguCustomer(**customer)
 
@@ -119,7 +119,7 @@ class IuguCustomer(base.IuguApi):
 
         # data.append(("api_token", self.api_token))
         urn = "/v1/customers/" + str(_customer_id)
-        customer = self.conn.delete(urn, data)
+        customer = self.__conn.delete(urn, data)
 
         return IuguCustomer(**customer)
 
@@ -158,7 +158,7 @@ class IuguCustomer(base.IuguApi):
                 key = "sortBy[{field}]".format(field=sort)
                 data.append((key, "asc"))
 
-        customers = self.conn.get(urn, data)
+        customers = self.__conn.get(urn, data)
         customers_objects = []
 
         for customer in customers["items"]:
@@ -189,7 +189,7 @@ class IuguPaymentMethod(object):
         else:
             self.payment_data = PaymentTypeCreditCard()
 
-        self.conn = base.IuguRequests()
+        self.__conn = base.IuguRequests()
 
     def create(self, customer_id=None, description=None, number=None,
                verification_value=None, first_name=None, last_name=None,
@@ -251,7 +251,7 @@ class IuguPaymentMethod(object):
             payment = self.payment_data.to_data()
             data.extend(payment)
 
-        response = self.conn.post(urn, data)
+        response = self.__conn.post(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 
@@ -270,7 +270,7 @@ class IuguPaymentMethod(object):
         urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
                 format(customer_id=customer_id, payment_id=payment_id)
         # data.append(("api_token", self.customer.api_token))
-        response = self.conn.get(urn, data)
+        response = self.__conn.get(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 
@@ -284,7 +284,7 @@ class IuguPaymentMethod(object):
         urn = "/v1/customers/{customer_id}/payment_methods".\
                 format(customer_id=customer_id)
 
-        response = self.conn.get(urn, data)
+        response = self.__conn.get(urn, data)
         payments = []
 
         for payment in response:
@@ -304,7 +304,7 @@ class IuguPaymentMethod(object):
 
         urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
                 format(customer_id=customer_id, payment_id=payment_id)
-        response = self.conn.put(urn, data)
+        response = self.__conn.put(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 
@@ -322,7 +322,7 @@ class IuguPaymentMethod(object):
         urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
                 format(customer_id=customer_id, payment_id=payment_id)
 
-        response = self.conn.delete(urn, data)
+        response = self.__conn.delete(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 

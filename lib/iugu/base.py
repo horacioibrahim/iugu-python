@@ -38,14 +38,14 @@ class IuguApi(object):
 class IuguRequests(IuguApi):
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    conn = HTTPSConnection(config.API_HOSTNAME) # not put in instance
-    conn.timeout = 10
+    __conn = HTTPSConnection(config.API_HOSTNAME) # not put in instance
+    __conn.timeout = 10
 
     def __init__(self, **options):
         super(IuguRequests, self).__init__(**options)
 
         if self.is_debug():
-            self.conn.set_debuglevel(2)
+            self.__conn.set_debuglevel(2)
 
     def __validation(self, response, msg=None):
         """
@@ -72,25 +72,25 @@ class IuguRequests(IuguApi):
         CLOSE_WAIT and raise errors CannotSendRequest or the server reply with
         empty and it raise BadStatusLine
         """
-        self.conn = HTTPSConnection(config.API_HOSTNAME) # reload
-        self.conn.timeout = 10
+        self.__conn = HTTPSConnection(config.API_HOSTNAME) # reload
+        self.__conn.timeout = 10
 
     def __conn_request(self, http_verb, urn, params):
         """
         Wrapper to request/response of httplib's context
         """
         try:
-            self.conn.request(http_verb, urn, params, self.headers)
+            self.__conn.request(http_verb, urn, params, self.headers)
         except CannotSendRequest:
             self.__reload_conn()
-            self.conn.request(http_verb, urn, params, self.headers)
+            self.__conn.request(http_verb, urn, params, self.headers)
 
         try:
-            response = self.conn.getresponse()
+            response = self.__conn.getresponse()
         except (IOError, BadStatusLine):
             self.__reload_conn()
-            self.conn.request(http_verb, urn, params, self.headers)
-            response = self.conn.getresponse()
+            self.__conn.request(http_verb, urn, params, self.headers)
+            response = self.__conn.getresponse()
 
         return response
 

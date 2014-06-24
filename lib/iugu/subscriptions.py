@@ -5,7 +5,7 @@ import base, config, errors, merchant
 
 class IuguSubscriptions(base.IuguApi):
 
-    conn = base.IuguRequests()
+    _conn = base.IuguRequests()
 
     def __init__(self, **kwargs):
         super(IuguSubscriptions, self).__init__(**kwargs)
@@ -15,12 +15,12 @@ class IuguSubscriptions(base.IuguApi):
         # optionals
         self.plan_identifier = kwargs.get("plan_identifier") # only credits_based subscriptions
         self.expires_at = kwargs.get("expires_at")
-        self.only_on_charge_success = kwargs.get("only_on_charge_success") # if exist payment method for client
+        # self.only_on_charge_success = kwargs.get("only_on_charge_success") # if exist payment method for client
         self._subitems = kwargs.get("subitems")
         self.subitems = [] # of items
         self.custom_variables = kwargs.get("custom_variables")
         self._data = None
-        self.suspend = kwargs.get("suspend")
+        self.suspended = kwargs.get("suspended")
         self.price_cents = kwargs.get("price_cents")
         self.currency = kwargs.get("currency")
         # created by api
@@ -45,7 +45,7 @@ class IuguSubscriptions(base.IuguApi):
     @staticmethod
     def is_credit_based(response):
         # Checks if subscription is credit_based type
-        if "credits_based" in response and response["credits_based"] == 'true':
+        if "credits_based" in response and response["credits_based"] == True:
             return True
         return False
 
@@ -59,6 +59,7 @@ class IuguSubscriptions(base.IuguApi):
         Body data for request send
         """
         data = []
+        self.id = kwargs.get("sid")
         self.customer_id = kwargs.get("customer_id")
         self.plan_identifier = kwargs.get("plan_identifier")
         self.expires_at = kwargs.get("expires_at")
@@ -69,6 +70,11 @@ class IuguSubscriptions(base.IuguApi):
         self.credits_min = kwargs.get("credits_min")
         self.credits_cycle = kwargs.get("credits_cycle")
         self.price_cents = kwargs.get("price_cents")
+        self.suspended = kwargs.get("suspended")
+        self.skip_charge = kwargs.get("skip_charge")
+
+        if self.id:
+            data.append(("id", self.id))
 
         if self.customer_id:
             data.append(("customer_id", self.customer_id))
@@ -80,7 +86,9 @@ class IuguSubscriptions(base.IuguApi):
             data.append(("expires_at", self.expires_at))
 
         if self.only_on_charge_success:
-            data.append(("only_on_charge_success", self.only_on_charge_success))
+            value_charge_success = str(self.only_on_charge_success)
+            value_charge_success = value_charge_success.lower()
+            data.append(("only_on_charge_success", value_charge_success))
 
         if self.subitems:
             if isinstance(self.subitems, list):
@@ -94,8 +102,10 @@ class IuguSubscriptions(base.IuguApi):
             pass
 
         # credit based subscriptions
-        if self.credits_based:
-            data.append(("credits_based", self.credits_based))
+        if self.credits_based is not None:
+            value_credits_based = str(self.credits_based)
+            value_credits_based = value_credits_based.lower()
+            data.append(("credits_based", value_credits_based))
 
         if self.credits_min:
             data.append(("credits_min", self.credits_min))
@@ -106,6 +116,16 @@ class IuguSubscriptions(base.IuguApi):
         if self.price_cents:
             data.append(("price_cents", self.price_cents))
 
+        if self.suspended is not None:
+            value_suspended = str(self.suspended)
+            value_suspended = value_suspended.lower()
+            data.append(("suspended", value_suspended))
+
+        if self.skip_charge is not None:
+            value_skip_charge = str(self.skip_charge)
+            value_skip_charge = value_skip_charge.lower()
+            data.append(("suspended", value_skip_charge))
+
         self._data = data
 
     @data.deleter
@@ -113,7 +133,7 @@ class IuguSubscriptions(base.IuguApi):
         del self._data
 
     def create(self, customer_id, plan_identifier, expires_at=None,
-               only_on_charge_success=None, subitems=None, custom_variables=None):
+               only_on_charge_success=False, subitems=None, custom_variables=None):
         """
         Creates new subscription
         """
@@ -121,7 +141,7 @@ class IuguSubscriptions(base.IuguApi):
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
-        response = self.conn.post(urn, self.data)
+        response = self._conn.post(urn, self.data)
         return IuguSubscriptions(**response)
 
     @classmethod
@@ -131,7 +151,7 @@ class IuguSubscriptions(base.IuguApi):
         subscriptions: credit_based or no credit_based
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
-        response = self.conn.get(urn, [])
+        response = self._conn.get(urn, [])
 
         if self.is_credit_based(response):
             return SubscriptionCreditsBased(**response)
@@ -174,7 +194,7 @@ class IuguSubscriptions(base.IuguApi):
                 key = "sortBy[{field}]".format(field=sort)
                 data.append((key, "asc"))
 
-        subscriptions = self.conn.get(urn, data)
+        subscriptions = self._conn.get(urn, data)
         subscriptions_objs = []
         for s in subscriptions["items"]:
             # add items in list but before verifies if credit_based
@@ -188,7 +208,8 @@ class IuguSubscriptions(base.IuguApi):
         return subscriptions_objs
 
     def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            only_on_charge_success=None, subitems=None, custom_variables=None):
+            only_on_charge_success=False, subitems=None, custom_variables=None,
+            suspended=False, skip_charge=False):
         """
         Changes an existent subscription no credit_based
         """
@@ -196,13 +217,14 @@ class IuguSubscriptions(base.IuguApi):
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
-        response = self.conn.put(urn, self.data)
+        response = self._conn.put(urn, self.data)
         return IuguSubscriptions(**response)
 
     def save(self):
         sid = self.id
         kwargs = {}
 
+        # TODO ineffective approach
         for k, v in self.__dict__.items():
             if k == "customer_id" or k == "plan_identifier" or k == "expires_at" \
                 or k == "only_on_charge_success" or k == "subitems" or \
@@ -222,7 +244,7 @@ class IuguSubscriptions(base.IuguApi):
                 raise errors.IuguSubscriptionsException(value="ID can't be empty")
 
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
-        self.conn.delete(urn, [])
+        self._conn.delete(urn, [])
 
 
 class SubscriptionCreditsBased(IuguSubscriptions):
@@ -234,19 +256,33 @@ class SubscriptionCreditsBased(IuguSubscriptions):
         self.credits_min = kwargs.get("credits_min")
         self.credits = kwargs.get("credits")
 
-    def create(self, customer_id, plan_identifier, credits_cycle=None,
-               expires_at=None, only_on_charge_success=None, subitems=None,
-               custom_variables=None):
+    def create(self, customer_id, credits_cycle, price_cents=None,
+               credits_min=None, expires_at=None, only_on_charge_success=None,
+               subitems=None, custom_variables=None):
 
+        if price_cents is None or price_cents <= 0:
+            raise errors.IuguSubscriptionsException(value="price_cents must be " \
+                                         "greater than 0")
         credits_based = self.credits_based
-        credits_min = 10
-        credits_cycle = 2
-        price_cents = 10000
 
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         urn = "/v1/subscriptions"
         self.data = kwargs_local
         print self.data
-        response = self.conn.post(urn, self.data)
+        response = self._conn.post(urn, self.data)
+        return SubscriptionCreditsBased(**response)
+
+    def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
+            only_on_charge_success=False, subitems=None, custom_variables=None,
+            suspended=False, skip_charge=False, price_cents=None,
+            credits_cycle=None, credits_min=None):
+        """
+        Changes an existent subscription no credit_based
+        """
+        urn = "/v1/subscriptions/{sid}".format(sid=sid)
+        kwargs_local = locals().copy()
+        kwargs_local.pop('self')
+        self.data = kwargs_local
+        response = self._conn.put(urn, self.data)
         return SubscriptionCreditsBased(**response)

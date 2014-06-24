@@ -12,7 +12,7 @@ class IuguMerchant(base.IuguApi):
 
     def __init__(self, **kwargs):
         super(IuguMerchant, self).__init__(**kwargs)
-        self.conn = base.IuguRequests()
+        self.__conn = base.IuguRequests()
 
     def create_payment_token(self, card_number, first_name, last_name,
                              month, year, verification_value, method="credit_card"):
@@ -35,7 +35,7 @@ class IuguMerchant(base.IuguApi):
         data.append(("account_id", self.account_id))
         data.append(("test", self.is_mode_test()))
         data.append(("method", method))
-        token_data = self.conn.post(urn, data)
+        token_data = self.__conn.post(urn, data)
 
         return Token(token_data)
 
@@ -67,7 +67,7 @@ class IuguMerchant(base.IuguApi):
             data.append(("method", "bank_slip"))
 
         data.append(("email", consumer_email))
-        results = self.conn.post(urn, data)
+        results = self.__conn.post(urn, data)
 
         return Invoice(results)
 
@@ -192,11 +192,16 @@ class Item(object):
                          self.price_cents))
 
         if self.recurrent:
+            value_recurrent = str(self.recurrent)
+            value_recurrent = value_recurrent.lower()
             as_tuple.append(("{items}[][recurrent]".format(items=key),
-                             self.recurrent))
+                             value_recurrent))
 
-        if self.destroy:
-            as_tuple.append(("{items}[][_destroy]".format(items=key), "true"))
+        if self.destroy is not None:
+            value_destroy = str(self.destroy)
+            value_destroy = value_destroy.lower()
+            as_tuple.append(("{items}[][_destroy]".format(items=key),
+                            value_destroy))
 
         return as_tuple
 

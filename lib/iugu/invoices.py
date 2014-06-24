@@ -7,7 +7,7 @@ import merchant, config, base, errors
 class IuguInvoice(object):
 
     API_TOKEN = config.API_TOKEN
-    conn = base.IuguRequests()
+    __conn = base.IuguRequests()
 
     def __init__(self, item=None, **kwargs):
         self.id = kwargs.get("id")
@@ -208,7 +208,7 @@ class IuguInvoice(object):
         self.data = kwargs_local
 
         urn = "/v1/invoices"
-        response = self.conn.post(urn, self.data)
+        response = self.__conn.post(urn, self.data)
         invoice = IuguInvoice(item=self.items, **response) # TODO: review item arg if required
         return invoice
 
@@ -217,7 +217,7 @@ class IuguInvoice(object):
         data = []
         # data.append(("api_token", self.API_TOKEN))
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
-        response = self.conn.get(urn, data)
+        response = self.__conn.get(urn, data)
 
         return IuguInvoice(**response)
 
@@ -256,7 +256,7 @@ class IuguInvoice(object):
                 key = "sortBy[{field}]".format(field=sort)
                 data.append((key, "asc"))
 
-        invoices = self.conn.get(urn, data)
+        invoices = self.__conn.get(urn, data)
         invoices_objects = []
         for invoice_item in invoices["items"]:
             obj_invoice = IuguInvoice(**invoice_item)
@@ -286,7 +286,7 @@ class IuguInvoice(object):
 
 
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
-        response = self.conn.put(urn, self.data)
+        response = self.__conn.put(urn, self.data)
 
         return IuguInvoice(**response)
 
@@ -294,13 +294,13 @@ class IuguInvoice(object):
 
         self.data = self.__dict__
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
-        response = self.conn.put(urn, self.data)
+        response = self.__conn.put(urn, self.data)
 
         return IuguInvoice(**response)
 
     def remove(self):
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
-        response = self.conn.delete(urn, [])
+        response = self.__conn.delete(urn, [])
         obj = IuguInvoice(**response)
         if obj:
             for k, v in self.__dict__.items():
@@ -309,7 +309,7 @@ class IuguInvoice(object):
     def cancel(self):
         urn = "/v1/invoices/{invoice_id}/cancel".format(invoice_id=self.id)
         if self.status == "pending":
-            response = self.conn.put(urn, [])
+            response = self.__conn.put(urn, [])
             obj = IuguInvoice(**response)
         else:
             raise errors.IuguGeneralException(value="Cancel operation support only " \
@@ -320,7 +320,7 @@ class IuguInvoice(object):
     @classmethod
     def to_cancel(self, invoice_id):
         urn = "/v1/invoices/{invoice_id}/cancel".format(invoice_id=invoice_id)
-        response = self.conn.put(urn, [])
+        response = self.__conn.put(urn, [])
         obj = IuguInvoice(**response)
 
         return obj
@@ -328,7 +328,7 @@ class IuguInvoice(object):
     def refund(self):
         urn = "/v1/invoices/{invoice_id}/refund".format(invoice_id=self.id)
         if self.status == "paid":
-            response = self.conn.post(urn, [])
+            response = self.__conn.post(urn, [])
             obj = IuguInvoice(**response)
         else:
             raise errors.IuguGeneralException(value="Refund operation support only " \
