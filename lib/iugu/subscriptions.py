@@ -3,12 +3,12 @@ __author__ = 'horacioibrahim'
 # python-iugu package modules
 import base, config, errors, merchant
 
-class IuguSubscriptions(base.IuguApi):
+class IuguSubscription(base.IuguApi):
 
     _conn = base.IuguRequests()
 
     def __init__(self, **kwargs):
-        super(IuguSubscriptions, self).__init__(**kwargs)
+        super(IuguSubscription, self).__init__(**kwargs)
         self.id = kwargs.get("id")
         # required
         self.customer_id = kwargs.get("customer_id")
@@ -143,13 +143,15 @@ class IuguSubscriptions(base.IuguApi):
         kwargs_local.pop('self')
         self.data = kwargs_local
         response = self._conn.post(urn, self.data)
-        return IuguSubscriptions(**response)
+        return IuguSubscription(**response)
 
     @classmethod
     def get(self, sid):
         """
         Fetch one subscription based in ID and returns one of two's types of
         subscriptions: credit_based or no credit_based
+
+        :param sid: ID of an existent subscriptions in API
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         response = self._conn.get(urn, [])
@@ -159,7 +161,7 @@ class IuguSubscriptions(base.IuguApi):
             return SubscriptionCreditsBased(**response)
 
         response["_type"] = "general"
-        return IuguSubscriptions(**response)
+        return IuguSubscription(**response)
 
     @classmethod
     def getitems(self, limit=None, skip=None, created_at_from=None,
@@ -206,24 +208,27 @@ class IuguSubscriptions(base.IuguApi):
                 obj_subscription = SubscriptionCreditsBased(**s)
             else:
                 s["_type"] = "general"
-                obj_subscription = IuguSubscriptions(**s)
+                obj_subscription = IuguSubscription(**s)
 
             subscriptions_objs.append(obj_subscription)
 
         return subscriptions_objs
 
     def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            subitems=None, custom_variables=None, suspended=False,
+            subitems=None, custom_variables=None, suspended=None,
             skip_charge=None):
         """
         Returns changed an existent subscription no credit_based
+
+        :param sid: ID of an existent subscriptions in API
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
         response = self._conn.put(urn, self.data)
-        return IuguSubscriptions(**response)
+        response["_type"] = "general"
+        return IuguSubscription(**response)
 
     def save(self):
         """ Saves and returns an instance of this class that was persisted,
@@ -250,18 +255,93 @@ class IuguSubscriptions(base.IuguApi):
     def remove(self, sid=None):
         """
         Removes a subscription given id or instance
+
+        :param sid: ID of an existent subscriptions in API
         """
         if not sid:
             if self.id:
                 sid = self.id
             else:
-                raise errors.IuguSubscriptionsException(value="ID can't be empty")
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
 
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         self._conn.delete(urn, [])
 
+    def suspend(self, sid=None):
+        """
+        Suspends an existent subscriptions
 
-class SubscriptionCreditsBased(IuguSubscriptions):
+        :param sid: ID of an existent subscriptions in API
+        """
+        if not sid:
+            if self.id:
+                sid = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
+
+        urn = "/v1/subscriptions/{sid}/suspend".format(sid=sid)
+        response = self._conn.post(urn, [])
+
+        if self.is_credit_based(response):
+            response["_type"] = "credit_based"
+            return SubscriptionCreditsBased(**response)
+
+        response["_type"] = "general"
+        return IuguSubscription(**response)
+
+    def activate(self, sid=None):
+        """
+        Activates an existent subscriptions
+
+        :param sid: ID of an existent subscriptions in API
+        """
+        if not sid:
+            if self.id:
+                sid = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
+
+        urn = "/v1/subscriptions/{sid}/activate".format(sid=sid)
+        response = self._conn.post(urn, [])
+
+        if self.is_credit_based(response):
+            response["_type"] = "credit_based"
+            return SubscriptionCreditsBased(**response)
+
+        response["_type"] = "general"
+        return IuguSubscription(**response)
+
+    def change_plan(self, plan_identifier, sid=None):
+        """
+        Changes the plan for existent subscriptions
+
+        :param sid: ID of an existent subscriptions in API
+        :param plan_identifier: the identifier of a plan (it's not ID)
+        """
+        if not sid:
+            if self.id:
+                # short-circuit
+                if "credits_based" in self.__dict__ and self.credits_based:
+                    raise errors.\
+                        IuguSubscriptionsException(value="Instance must be " \
+                                        "object of IuguSubscriptionsException")
+                sid = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
+
+        urn = "/v1/subscriptions/{sid}/change_plan/{plan_identifier}"\
+                .format(sid=sid, plan_identifier=plan_identifier)
+        response = self._conn.post(urn, [])
+
+        if self.is_credit_based(response):
+            response["_type"] = "credit_based"
+            return SubscriptionCreditsBased(**response)
+
+        response["_type"] = "general"
+        return IuguSubscription(**response)
+
+
+class SubscriptionCreditsBased(IuguSubscription):
 
     def __init__(self, **kwargs):
         super(SubscriptionCreditsBased, self).__init__(**kwargs)
@@ -288,11 +368,13 @@ class SubscriptionCreditsBased(IuguSubscriptions):
         return SubscriptionCreditsBased(**response)
 
     def set(self, sid, customer_id=None, expires_at=None,
-            subitems=None, custom_variables=None, suspended=False,
+            subitems=None, custom_variables=None, suspended=None,
             skip_charge=None, price_cents=None, credits_cycle=None,
             credits_min=None):
         """
         Changes an existent subscription no credit_based
+
+        :param sid: ID of an existent subscriptions in API
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         kwargs_local = locals().copy()
@@ -324,3 +406,62 @@ class SubscriptionCreditsBased(IuguSubscriptions):
                     kwargs[k] = v
 
         return self.set(sid, **kwargs)
+
+    def add_credits(self, quantity, sid=None):
+        """
+        Adds credits in existent subscriptions
+
+        :param sid: ID of an existent subscriptions in API
+        :param plan_identifier: the identifier of a plan (it's not ID)
+        """
+        data = []
+        if not sid:
+            if self.id:
+                if not self.credits_based:
+                    raise errors.\
+                        IuguSubscriptionsException(value="Instance must be " \
+                                        "object of SubscriptionCreditsBased")
+                sid = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
+
+        urn = "/v1/subscriptions/{sid}/add_credits".format(sid=sid)
+        data.append(("quantity", quantity))
+        response = self._conn.put(urn, data)
+
+        if not self.is_credit_based(response):
+            raise errors.IuguSubscriptionsException(value="Instance must be " \
+                                        "object of SubscriptionCreditsBased")
+
+        response["_type"] = "credit_based"
+        return SubscriptionCreditsBased(**response)
+
+    def remove_credits(self, quantity, sid=None):
+        """
+        Suspends an existent subscriptions
+
+        :param sid: ID of an existent subscriptions in API
+        :param plan_identifier: the identifier of a plan (it's not ID)
+        """
+        data = []
+        if not sid:
+            if self.id:
+                if not self.credits_based:
+                    raise errors.\
+                        IuguSubscriptionsException(value="Instance must be " \
+                                        "object of SubscriptionCreditsBased")
+                sid = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (sid) can't be empty")
+
+        urn = "/v1/subscriptions/{sid}/remove_credits".format(sid=sid)
+        data.append(("quantity", quantity))
+        response = self._conn.put(urn, data)
+
+        if not self.is_credit_based(response):
+            raise errors.IuguSubscriptionsException(value="Instance must be " \
+                                        "object of SubscriptionCreditsBased")
+
+        response["_type"] = "credit_based"
+        return SubscriptionCreditsBased(**response)
+
