@@ -172,6 +172,5 @@ Known Issues
 It's need to use date formatted as string "2014-06-05T15:02:40-03:00",
 but in new release date will python date.
 ### URN in single local ###
-For each request an URN is need that its pass "hardcode". Change it to an
-centralized URN and their variations.
+TODO: to create make_urn([])
 
