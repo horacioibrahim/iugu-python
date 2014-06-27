@@ -23,6 +23,9 @@ class TestMerchant(unittest.TestCase):
                                        api_mode_test=True,
                                        api_token=self.API_TOKEN_TEST)
 
+    def tearDown(self):
+        pass
+
     def test_create_payment_token_is_test(self):
         response = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
                                                '12', '2010', '123')
@@ -39,11 +42,13 @@ class TestMerchant(unittest.TestCase):
                                                '12', '2010', '123')
         charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token.id)
         self.assertEqual(charge.is_success(), True)
+        invoices.IuguInvoice().remove(invoice_id=charge.invoice_id)
 
     def test_create_charge_blank_slip(self):
         item = merchant.Item("Produto Blank Slip", 1, 1000)
         charge = self.client.create_charge(self.EMAIL_CUSTOMER, item)
         self.assertEqual(charge.is_success(), True)
+        invoices.IuguInvoice().remove(invoice_id=charge.invoice_id)
 
 
 class TestCustomer(unittest.TestCase):
@@ -632,7 +637,6 @@ class TestInvoice(unittest.TestCase):
         self.assertIsInstance(l, list)
         self.assertIsInstance(l[0], invoices.IuguInvoice)
 
-    # TODO
     def test_invoice_getitems_limit(self):
         invoice_2 = self.invoice_obj.create()
         sleep(3)
@@ -654,14 +658,11 @@ class TestInvoice(unittest.TestCase):
         invoice_3.remove()
         self.assertEqual(keep_checker.id, skipped.id)
 
-    def test_invoice_getitems_created_at_from(self):
-        pass # TODO
+    # TODO: def test_invoice_getitems_created_at_from(self):
 
-    def test_invoice_getitems_created_at_to(self):
-        pass # TODO
+    # TODO:def test_invoice_getitems_created_at_to(self):
 
-    def test_invoice_getitems_updated_since(self):
-        pass # TODO
+    # TODO: def test_invoice_getitems_updated_since(self):
 
     def test_invoice_getitems_query(self):
         res = self.invoice_obj.create(customer_id=self.consumer.id)
@@ -1065,6 +1066,15 @@ class TestPlans(unittest.TestCase):
 
 class TestSubscriptions(unittest.TestCase):
 
+
+    def clean_invoices(self, recent_invoices):
+        """
+        Removes invoices created in backgrounds of tests
+        """
+        if recent_invoices:
+            invoice = recent_invoices[0]
+            invoices.IuguInvoice().remove(invoice_id=invoice["id"])
+
     def setUp(self):
         # preparing object...
         seed = randint(1, 999)
@@ -1114,6 +1124,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription_new = p_obj.create(self.customer.id, self.plan_new.identifier)
         self.assertIsInstance(subscription_new, subscriptions.IuguSubscription)
         self.assertEqual(subscription_new.plan_identifier, self.plan_new.identifier)
+        self.clean_invoices(subscription_new.recent_invoices)
         subscription_new.remove()
 
     def test_subscription_create_only_on_charge_success_with_payment(self):
@@ -1129,6 +1140,7 @@ class TestSubscriptions(unittest.TestCase):
         new_subscription = p_obj.create(customer.id, self.plan_new.identifier,
                      only_on_charge_success=True)
         self.assertEqual(new_subscription.recent_invoices[0]["status"], "paid")
+        self.clean_invoices(new_subscription.recent_invoices)
         new_subscription.remove()
         customer.remove()
 
@@ -1144,6 +1156,7 @@ class TestSubscriptions(unittest.TestCase):
         p_obj = subscriptions.IuguSubscription()
         subscription_new = p_obj.create(self.customer.id, self.plan_new.identifier)
         sid = subscription_new.id
+        self.clean_invoices(subscription_new.recent_invoices)
         subscription_new.remove()
         self.assertRaises(errors.IuguGeneralException,
                                 subscriptions.IuguSubscription.get, sid)
@@ -1156,7 +1169,75 @@ class TestSubscriptions(unittest.TestCase):
         subscription_list = subscriptions.IuguSubscription.getitems()
         self.assertIsInstance(subscription_list[0], subscriptions.IuguSubscription)
 
-    # TODO: test getitems arguments...
+    def test_subscription_getitem_limit(self):
+        client_subscriptions = subscriptions.IuguSubscription()
+        sub_1 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_2 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_3 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_4 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sleep(2) # slower API
+        subscriptions_list = subscriptions.IuguSubscription.getitems(limit=1)
+        self.assertEqual(len(subscriptions_list), 1)
+        self.assertEqual(subscriptions_list[0].id, sub_4.id)
+        self.clean_invoices(sub_1.recent_invoices)
+        self.clean_invoices(sub_2.recent_invoices)
+        self.clean_invoices(sub_3.recent_invoices)
+        self.clean_invoices(sub_4.recent_invoices)
+        a, b, c, d = sub_1.remove(), sub_2.remove(), sub_3.remove(), sub_4.remove()
+
+    def test_subscription_getitem_skip(self):
+        client_subscriptions = subscriptions.IuguSubscription()
+        sub_1 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_2 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_3 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_4 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sleep(2)
+        subscriptions_list = subscriptions.IuguSubscription.getitems(skip=1)
+        self.assertEqual(subscriptions_list[0].id, sub_3.id)
+        self.clean_invoices(sub_1.recent_invoices)
+        self.clean_invoices(sub_2.recent_invoices)
+        self.clean_invoices(sub_3.recent_invoices)
+        self.clean_invoices(sub_4.recent_invoices)
+        a, b, c, d = sub_1.remove(), sub_2.remove(), sub_3.remove(), sub_4.remove()
+
+    # TODO: def test_subscription_getitem_created_at_from(self):
+
+    def test_subscription_getitem_query(self):
+        term = self.customer.name
+        sleep(3) # very slow API! waiting...
+        subscriptions_list = subscriptions.IuguSubscription.getitems(query=term)
+        self.assertGreaterEqual(len(subscriptions_list), 1)
+
+    # TODO: def test_subscription_getitem_updated_since(self):
+
+    @unittest.skip("API not support this. No orders is changed")
+    def test_subscription_getitem_sort(self):
+        client_subscriptions = subscriptions.IuguSubscription()
+        sub_1 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_2 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_3 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_4 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        subscriptions_list = subscriptions.IuguSubscription.getitems(sort="-created_at")
+        #self.assertEqual(subscriptions_list[0].id, sub_3.id)
+        self.clean_invoices(sub_1.recent_invoices)
+        self.clean_invoices(sub_2.recent_invoices)
+        self.clean_invoices(sub_3.recent_invoices)
+        self.clean_invoices(sub_4.recent_invoices)
+        a, b, c, d = sub_1.remove(), sub_2.remove(), sub_3.remove(), sub_4.remove()
+
+    def test_subscription_getitem_customer_id(self):
+
+        client_subscriptions = subscriptions.IuguSubscription()
+        # previous subscription was created in setUp
+        sub_1 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sub_2 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
+        sleep(3)
+        subscriptions_list = subscriptions.IuguSubscription.\
+                    getitems(customer_id=self.customer.id)
+        self.assertEqual(len(subscriptions_list), 3) # sub_1 + sub_2 + setUp
+        self.clean_invoices(sub_1.recent_invoices)
+        self.clean_invoices(sub_2.recent_invoices)
+        a, b = sub_1.remove(), sub_2.remove()
 
     def test_subscription_set_plan(self):
         # Test to change an existent plan in subscription
@@ -1171,6 +1252,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription = subscriptions.IuguSubscription().set(sid,
                                         plan_identifier=plan_newest.identifier)
         self.assertEqual(subscription.plan_identifier, plan_identifier)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
         plan_newest.remove()
 
@@ -1282,12 +1364,12 @@ class TestSubscriptions(unittest.TestCase):
                 create(self.customer.id, credits_cycle=2, price_cents=10)
 
         self.assertIsInstance(subscription, subscriptions.SubscriptionCreditsBased)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_create_credit_based_error_price_cents(self):
         # Test if price_cents changed
         subscription = subscriptions.SubscriptionCreditsBased()
-
         self.assertRaises(errors.IuguSubscriptionsException,
                           subscription.create, self.customer.id,
                           credits_cycle=2, price_cents=0)
@@ -1295,7 +1377,6 @@ class TestSubscriptions(unittest.TestCase):
     def test_subscription_create_credit_based_error_price_cents_empty(self):
         # Test if price_cents changed
         subscription = subscriptions.SubscriptionCreditsBased()
-
         self.assertRaises(errors.IuguSubscriptionsException,
                           subscription.create, self.customer.id,
                           credits_cycle=2, price_cents=None)
@@ -1306,6 +1387,7 @@ class TestSubscriptions(unittest.TestCase):
                 create(self.customer.id, credits_cycle=2, price_cents=2000)
 
         self.assertEqual(subscription.price_cents, 2000)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_create_credit_based_credits_cycle(self):
@@ -1314,6 +1396,7 @@ class TestSubscriptions(unittest.TestCase):
                 create(self.customer.id, credits_cycle=2, price_cents=2000)
 
         self.assertEqual(subscription.credits_cycle, 2)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_create_credit_based_credits_min(self):
@@ -1323,6 +1406,7 @@ class TestSubscriptions(unittest.TestCase):
                         credits_min=4000)
 
         self.assertEqual(subscription.credits_min, 4000)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_set_credit_based_price_cents(self):
@@ -1334,6 +1418,7 @@ class TestSubscriptions(unittest.TestCase):
                 set(subscription.id, price_cents=3249)
 
         self.assertEqual(subscription.price_cents, 3249)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_set_credits_cycle(self):
@@ -1345,6 +1430,7 @@ class TestSubscriptions(unittest.TestCase):
                 set(subscription.id, credits_cycle=10)
 
         self.assertEqual(subscription.credits_cycle, 10)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_set_credits_min(self):
@@ -1356,6 +1442,7 @@ class TestSubscriptions(unittest.TestCase):
                 set(subscription.id, credits_min=2000)
 
        self.assertEqual(subscription.credits_min, 2000)
+       self.clean_invoices(subscription.recent_invoices)
        subscription.remove()
 
     def test_subscription_credit_based_get(self):
@@ -1367,6 +1454,7 @@ class TestSubscriptions(unittest.TestCase):
                     get(subscription.id)
 
         self.assertIsInstance(subscription, subscriptions.SubscriptionCreditsBased)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_credit_based_getitems(self):
@@ -1379,6 +1467,7 @@ class TestSubscriptions(unittest.TestCase):
                 getitems()
 
         self.assertIsInstance(subscription_list[0], subscriptions.SubscriptionCreditsBased)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     # Test save method
@@ -1483,6 +1572,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription.price_cents = 8188
         obj = subscription.save()
         self.assertEqual(obj.price_cents, 8188)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_save_credits_cycle(self):
@@ -1492,6 +1582,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription.credits_cycle = 5
         obj = subscription.save()
         self.assertEqual(obj.credits_cycle, 5)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_save_credits_min(self):
@@ -1501,6 +1592,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription.credits_min = 9000
         obj = subscription.save()
         self.assertEqual(obj.credits_min, 9000)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_suspend(self):
@@ -1525,8 +1617,9 @@ class TestSubscriptions(unittest.TestCase):
         obj = subscriptions.IuguSubscription().change_plan(
                                         plan_again_change.identifier,
                                         sid=self.subscription.id)
-        #plan_again_change.remove()
         self.assertEqual(obj.plan_identifier, identifier)
+        self.clean_invoices(obj.recent_invoices)
+        plan_again_change.remove()
 
     def test_subscription_change_plan_by_instance(self):
         seed = randint(1, 999)
@@ -1534,10 +1627,11 @@ class TestSubscriptions(unittest.TestCase):
         plan_again_change = plans.IuguPlan().create(name="Change Test",
                                             identifier=identifier,
                                             interval=1, interval_type="months",
-                                            currency="BRL", value_cents=1111)
+                                            currency="BRL", value_cents=1112)
         obj = self.subscription.change_plan(plan_again_change.identifier)
-        #plan_again_change.remove()
         self.assertEqual(obj.plan_identifier, identifier)
+        self.clean_invoices(obj.recent_invoices)
+        plan_again_change.remove()
 
     def test_subscription_add_credits(self):
         subscription = subscriptions.SubscriptionCreditsBased()
@@ -1546,6 +1640,7 @@ class TestSubscriptions(unittest.TestCase):
         obj = subscriptions.SubscriptionCreditsBased().add_credits(sid=subscription.id,
                                                      quantity=20)
         self.assertEqual(obj.credits, 20)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_add_credits_by_instance(self):
@@ -1555,6 +1650,7 @@ class TestSubscriptions(unittest.TestCase):
         obj = subscription.add_credits(sid=subscription.id,
                                                      quantity=20)
         self.assertEqual(obj.credits, 20)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_remove_credits(self):
@@ -1566,6 +1662,7 @@ class TestSubscriptions(unittest.TestCase):
         obj = subscriptions.SubscriptionCreditsBased().\
             remove_credits(sid=subscription.id, quantity=5)
         self.assertEqual(obj.credits, 15)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
     def test_subscription_remove_credits_by_instance(self):
@@ -1577,8 +1674,13 @@ class TestSubscriptions(unittest.TestCase):
         sleep(2)
         obj = subscription.remove_credits(quantity=5)
         self.assertEqual(obj.credits, 15)
+        self.clean_invoices(subscription.recent_invoices)
         subscription.remove()
 
+
+class TestTransfer(unittest.TestCase):
+    # TODO: to create this tests
+    pass
 
 
 if __name__ == '__main__':

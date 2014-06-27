@@ -207,6 +207,9 @@ class IuguPlan(object):
     @classmethod
     def getitems(self, limit=None, skip=None, query=None, updated_since=None,
                  sort=None):
+        """
+        Gets plans by API default limited 100.
+        """
         data = []
         urn = "/v1/plans/"
 

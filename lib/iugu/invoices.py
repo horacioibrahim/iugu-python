@@ -6,7 +6,7 @@ import merchant, config, base, errors
 
 class IuguInvoice(object):
 
-    API_TOKEN = config.API_TOKEN
+    API_TOKEN = config.API_TOKEN # TODO to remove it
     __conn = base.IuguRequests()
 
     def __init__(self, item=None, **kwargs):
@@ -215,7 +215,6 @@ class IuguInvoice(object):
     @classmethod
     def get(self, invoice_id):
         data = []
-        # data.append(("api_token", self.API_TOKEN))
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.__conn.get(urn, data)
 
@@ -225,6 +224,9 @@ class IuguInvoice(object):
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None,
                  customer_id=None):
+        """
+        Gets invoices by API default limited 100.
+        """
         data = []
         urn = "/v1/invoices/"
 
@@ -298,8 +300,17 @@ class IuguInvoice(object):
 
         return IuguInvoice(**response)
 
-    def remove(self):
-        urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
+    def remove(self, invoice_id=None):
+        """
+        Removes an invoice by id or instance
+        """
+        if not invoice_id:
+            if self.id:
+                invoice_id = self.id
+            else:
+                raise errors.IuguSubscriptionsException(value="ID (invoice_id) can't be empty")
+
+        urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.__conn.delete(urn, [])
         obj = IuguInvoice(**response)
         if obj:

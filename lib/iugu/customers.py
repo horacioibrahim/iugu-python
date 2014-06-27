@@ -275,6 +275,9 @@ class IuguPaymentMethod(object):
         return IuguPaymentMethod(self.customer, **response)
 
     def getitems(self, customer_id=None):
+        """
+        Gets customers by API default limited 100.
+        """
         data = []
         # data.append(("api_token", self.customer.api_token))
 

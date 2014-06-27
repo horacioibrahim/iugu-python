@@ -167,7 +167,9 @@ class IuguSubscription(base.IuguApi):
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None,
                  customer_id=None):
-
+        """
+        Gets subscriptions by API default limited 100.
+        """
         data = []
         urn = "/v1/subscriptions/"
 
@@ -242,6 +244,7 @@ class IuguSubscription(base.IuguApi):
 
         kwargs = {}
         # TODO: to improve this ineffective approach
+        # Currently this check if the set's parameters was passed
         for k, v in self.__dict__.items():
             if v is not None:
                 if k == "customer_id" or k == "plan_identifier" or \
@@ -395,7 +398,8 @@ class SubscriptionCreditsBased(IuguSubscription):
                         "only to returned API object.")
 
         kwargs = {}
-        # TODO: to improve this ineffective approach
+        # TODO: to improve this ineffective approach.
+        # Currently this check if the set's parameters was passed
         for k, v in self.__dict__.items():
             if v is not None:
                 if k == "customer_id" or k == "expires_at" or \

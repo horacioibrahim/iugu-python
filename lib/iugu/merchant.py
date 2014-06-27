@@ -71,6 +71,7 @@ class IuguMerchant(base.IuguApi):
 
         return Invoice(results)
 
+
 class Invoice(object):
 
     def __init__(self, invoice):
@@ -210,3 +211,47 @@ class Item(object):
         Marks the item that will removed after save an invoice
         """
         self.destroy = True
+
+
+class Transfers(object):
+
+    __conn = base.IuguRequests()
+    __urn = "/v1/transfers"
+
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.created_at = kwargs.get("created_at")
+        self.amount_cents = kwargs.get("amount_cents")
+        self.amount_localized = kwargs.get("amount_localized")
+        self.receiver = kwargs.get("receiver")
+        self.sender = kwargs.get("sender")
+
+    def send(self, receiver_id, amount_cents):
+        """
+        To send amount_cents to receiver_id
+        """
+        data =[]
+        data.append(("receiver_id", receiver_id))
+        data.append(("amount_cents", amount_cents))
+        response = self.__conn.post(self.__urn, data)
+        return Transfers(**response)
+
+    @classmethod
+    def getitems(self):
+        """
+        Gets sent and received transfers for use in API_KEY
+        """
+        response = self.__conn.get(self.__urn, [])
+        sent = response["sent"]
+        received = response["received"]
+        transfers = []
+
+        for t in sent:
+            transfer_obj = Transfers(**t)
+            transfers.append(transfer_obj)
+
+        for r in received:
+            transfer_obj = Transfers(**r)
+            transfers.append(transfer_obj)
+
+        return transfers
