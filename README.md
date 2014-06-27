@@ -160,7 +160,7 @@ subscription.save()
 Remove
 ```
 subscription.remove()
-``
+```
 
 ### References ###
 - API Document: http://iugu.com/referencias/api
