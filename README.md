@@ -111,7 +111,7 @@ invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
 Get all invoices
 ```
 # not is need previous instance/obj
-invoices = IuguInvoice.getitems() # outcomes list of invoices
+invoices = IuguInvoice.getitems() # outcomes list of invoices (max 100 by API)
 ```
 Get all with filter
 ```
@@ -123,10 +123,44 @@ invoices = IuguInvoice.getitems(sort="email") # ASC
 ```
 Edit/change invoice
 ```
-invoice = IuguInvoice.set()
+invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
+invoice_existent.email = "other@other.com"
+invoice_existent.save()
 ```
-
-
+Remove
+```
+invoice_existent.remove()
+```
+Cancel
+```
+IuguInvoice.to_cancel('A4AF853BC5714380A8708B2A4EDA27B3')
+```
+Refund
+```
+invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
+invoice_existent.refund()
+```
+### Operations with Subscriptions ###
+Create a subscription
+```
+from subscriptions import IuguSubscription
+client = IuguSubscription()
+subscription = client.create(customer_id="XXX", plan_identifier="XXX")
+```
+Get one
+```
+subscription = IuguSubscription.get('ID')
+```
+Edit/Change
+```
+subscription = IuguSubscription.get('ID')
+subscription.expires_at = "14/07/2014"
+subscription.save()
+```
+Remove
+```
+subscription.remove()
+``
 
 ### References ###
 - API Document: http://iugu.com/referencias/api

@@ -279,7 +279,6 @@ class IuguPaymentMethod(object):
         Gets customers by API default limited 100.
         """
         data = []
-        # data.append(("api_token", self.customer.api_token))
 
         if customer_id is None:
             customer_id = self.customer.id
