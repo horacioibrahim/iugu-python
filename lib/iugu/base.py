@@ -10,21 +10,29 @@ import errors, config
 
 class IuguApi(object):
 
+    """
+    Contains basics info to requests with API
+
+    account_id:
+    api_user:
+    api_mode_test:
+    """
+
     API_TOKEN = config.API_TOKEN
 
     def __init__(self, **options):
         self.account_id = options.get('account_id')
         self.api_user = options.get('api_user')
-        # self.api_hostname = "api.iugu.com"
         self.api_mode_test = options.get('api_mode_test') # useful for payment_token
 
     def is_debug(self):
-        """ Checks if debug mode is True.
-        """
+        """Returns debug mode in config"""
         return config.DEBUG
 
     def is_mode_test(self):
-        # This is the "test mode" in API
+        """Check if api_mode_test is True or False.
+        Return string of the boolean
+        """
 
         if self.api_mode_test is True:
             return "true"
@@ -37,6 +45,24 @@ class IuguApi(object):
 
 class IuguRequests(IuguApi):
 
+    """
+    All request to API pass by here. Use the HTTP verbs for each request. For
+    each method (get, post, put and delete) is need an URN and a list of fields
+    its passed as list of tuples that is encoded by urlencode (e.g:
+    [("field_api", "value")]
+
+    URN: is relative path of URL http://api.iugu.com/ARG1/ARG2 where
+    URN = "/ARG1/ARG2"
+
+    All methods appends an api_token that is encoded in url params. The
+    api_token is given in config.py its useful to work in sandbox mode.
+
+    :method get: make a GET request
+    :method post: make a POST request
+    :method put: make a PUT request
+    :method delete: make a DELETE request
+    """
+
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     __conn = HTTPSConnection(config.API_HOSTNAME) # not put in instance
     __conn.timeout = 10
@@ -45,6 +71,7 @@ class IuguRequests(IuguApi):
         super(IuguRequests, self).__init__(**options)
 
         if self.is_debug():
+            # set debuglevel to HTTPSConnection
             self.__conn.set_debuglevel(2)
 
     def __validation(self, response, msg=None):
@@ -77,7 +104,8 @@ class IuguRequests(IuguApi):
 
     def __conn_request(self, http_verb, urn, params):
         """
-        Wrapper to request/response of httplib's context
+        Wrapper to request/response of httplib's context, reload a
+        connection if presume that error will occurs and returns the response
         """
         try:
             self.__conn.request(http_verb, urn, params, self.headers)

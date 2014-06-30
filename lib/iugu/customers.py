@@ -10,9 +10,11 @@ class IuguCustomer(base.IuguApi):
 
     def __init__(self, **options):
         """
+        This class is a CRUD for customers in API
 
-        :param **options: receives dict load by json
+        :param **options: receives dictionary load by JSON with fields of API
 
+          => http://iugu.com/referencias/api#clientes
         """
         super(IuguCustomer, self).__init__(**options)
         self.id = options.get("id")
@@ -29,15 +31,18 @@ class IuguCustomer(base.IuguApi):
         self.custom_variables = options.get("custom_variables")
         self.payment = IuguPaymentMethod(self)
 
-    def create(self, name=None, notes=None, email=None, custom_variables=[]):
-        """Creates a customer
+    def create(self, name=None, notes=None, email=None, **custom_variables):
+        """Creates a customer and return an IuguCustomer's instance
 
-        :param custom_variables: list of tuples [("local", "cup"),]
+        :param name: customer name
+        :param notes: field to post info's of an user
+        :param email: required data of an user
+        :param custom_variables: keywords parameters to multiple purpose (e.g
+        city='Recife', uf='PE'). Key is sent with lower chars (City or CITY is
+        sent as city)
         """
         data = []
         urn = "/v1/customers"
-        # data fields of charge
-        # data.append(("api_token", self.A))
 
         if name:
             data.append(("name", name))
@@ -53,36 +58,37 @@ class IuguCustomer(base.IuguApi):
         else:
             raise errors.IuguGeneralException(value="E-mail required is empty")
 
-        if isinstance(custom_variables, list) and len(custom_variables) > 0:
-            for custom_var in custom_variables:
-                data.append(("custom_variables[][name]", custom_var))
+        for k, v in custom_variables.items():
+            data.append(("custom_variables[][name]", k.lower()))
+            data.append(("custom_variables[][value]", v))
 
         customer = self.__conn.post(urn, data)
-
         instance = IuguCustomer(**customer)
-        # instance.api_token = self.API_TOKEN
 
         return instance
 
     @classmethod
     def get(self, customer_id):
+        """Gets one customer with id based and returns an instance"""
         data = []
-
-        # data fields of charge
-        # data.append(("api_token", self.api_token))
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
         customer = self.__conn.get(urn, data)
         instance = IuguCustomer(**customer)
-        instance.api_token = self.API_TOKEN
+        instance.api_token = self.API_TOKEN # TODO: remove it and test
 
         return instance
 
-    def set(self, customer_id, name=None, notes=None): # TODO: custom_variables=[]
-        """ Updates an customer that already exists
+    def set(self, customer_id, name=None, notes=None, **custom_variables):
+        """ Updates/changes a customer that already exists
+
+        :param custom_variables: is keywords parameters where we can edit or
+        add custom variables. If previously exist the variable is edited
+        rather is added
+
+        HINT: Use method save() at handling an instance
         """
         data = []
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
-        # data.append(("api_token", self.api_token))
 
         if name:
             data.append(("name", name))
@@ -90,47 +96,58 @@ class IuguCustomer(base.IuguApi):
         if notes:
             data.append(("notes", notes))
 
-        # TODO: waiting support from API developers
-        #for custom_var in custom_variables:
-        #    key = "custom_variables[][{name}]".format(name=custom_var[0])
-        #    value = custom_var[1]
-        #    data.append((key, value))
+        for k, v in custom_variables.items():
+            data.append(("custom_variables[][name]", k.lower()))
+            data.append(("custom_variables[][value]", v))
 
         customer = self.__conn.put(urn, data)
 
         return IuguCustomer(**customer)
 
     def save(self):
+        """Save updating a customer's instance"""
         return self.set(self.id, name=self.name, notes=self.notes)
 
     def delete(self, customer_id=None):
+        """Deletes a customer of instance or by passing an id.
+        And return the removed object"""
         data = []
 
         if self.id:
-            # instance of class (saved)
+            # instance of class (customer already exist)
             _customer_id = self.id
         else:
             if customer_id:
                 _customer_id = customer_id
             else:
                 # instance of class (not saved)
-                raise TypeError("It's not instance of object returned because " \
-                                "not possible delete.")
+                raise TypeError("It's not instance of object returned or " \
+                                "customer_id is empty.")
 
-        # data.append(("api_token", self.api_token))
         urn = "/v1/customers/" + str(_customer_id)
         customer = self.__conn.delete(urn, data)
 
         return IuguCustomer(**customer)
 
-    remove = delete # remove for semantic of API and delete for HTTP verbs
+    remove = delete # remove for keep the semantic of API
 
     @classmethod
     def getitems(self, limit=None, skip=None, created_at_from=None,
                  created_at_to=None, query=None, updated_since=None, sort=None):
+        """
+        Get a list of customers and return a list of IuguCustomer's instances.
+
+        :param limit: limits the number of customers returned by API (default
+        and immutable of API is 100)
+        :param skip: skips a numbers of customers where more recent insert
+        ordering. Useful to pagination
+        :param query: filters based in value (case insensitive)
+        :param sort: sorts based in field. Use minus signal to determine the
+        direction DESC or ASC (e.g sort="-email"). IMPORTANT: not work by API
+        :return: list of IuguCustomer instances
+        """
         data = []
         urn = "/v1/customers/"
-        # data.append(("api_token", self.api_token))
 
         # Set options
         if limit:
@@ -163,13 +180,19 @@ class IuguCustomer(base.IuguApi):
 
         for customer in customers["items"]:
             obj_customer = IuguCustomer(**customer)
-            # obj_customer.api_token = self.API_TOKEN # This is all IuguRequests
             customers_objects.append(obj_customer)
 
         return customers_objects
 
 
 class IuguPaymentMethod(object):
+
+    """
+    A customer have multiple payments methods with only one default. This class
+    allows handling Payment Methods.
+
+      => http://iugu.com/referencias/api#formas-de-pagamento-de-cliente
+    """
 
     def __init__(self, customer, item_type="credit_card", **kwargs):
         assert isinstance(customer, IuguCustomer), "Customer invalid."
@@ -194,14 +217,15 @@ class IuguPaymentMethod(object):
     def create(self, customer_id=None, description=None, number=None,
                verification_value=None, first_name=None, last_name=None,
                month=None, year=None):
-        """ Creates a payment method for a client
+        """ Creates a payment method for a customer and returns the own class
 
         :param customer_id: id of customer. You can pass in init or here
-        :param description: required to create method. You can pass in init or here
+        :param description: required to create method. You can pass in init
+        or here
 
-        TODO: By API data is optional, but is not real behavior. If confirmed the
-        required fields as number, verification_value, first_name, last_name,
-        month and year we can put as required args.
+        IMPORTANT: The API assert that data is optional, but is not real
+        behavior. The values as number, verification_value, first_name, last_name,
+        month and year are required args.
         """
         data = []
 
@@ -256,8 +280,7 @@ class IuguPaymentMethod(object):
         return IuguPaymentMethod(self.customer, **response)
 
     def get(self, payment_id, customer_id=None):
-        """ Returns a payment method of an user
-        """
+        """ Returns a payment method of an user with base payment ID"""
         data = []
         payment_id = str(payment_id)
 
@@ -269,14 +292,14 @@ class IuguPaymentMethod(object):
 
         urn = "/v1/customers/{customer_id}/payment_methods/{payment_id}".\
                 format(customer_id=customer_id, payment_id=payment_id)
-        # data.append(("api_token", self.customer.api_token))
         response = self.__conn.get(urn, data)
 
         return IuguPaymentMethod(self.customer, **response)
 
     def getitems(self, customer_id=None):
         """
-        Gets customers by API default limited 100.
+        Gets payment methods of a customer and returns a list of payment's
+        methods instances (API limit is 100)
         """
         data = []
 
@@ -296,9 +319,12 @@ class IuguPaymentMethod(object):
         return payments
 
     def set(self, payment_id, description, customer_id=None):
-        # TODO: if instance of self already have payment_id
+        """Updates/changes payment method with based in ID and customer. And
+        returns object edited.
+
+        HINT: Use save() to modify instances
+        """
         data = []
-        # data.append(("api_token", self.customer.api_token))
         data.append(("description", description))
 
         if customer_id is None:
@@ -315,7 +341,11 @@ class IuguPaymentMethod(object):
 
 
     def delete(self, payment_id, customer_id=None):
-        # TODO: if instance of self already payment_id
+        """Deletes payment method with based in ID and customer. And
+        returns object edited.
+
+        HINT: Use remove() for to remove instances
+        """
         data = []
 
         if customer_id is None:
@@ -334,6 +364,16 @@ class IuguPaymentMethod(object):
 
 
 class PaymentTypeCreditCard(object):
+
+    """
+
+    This class abstract the data parameter of payment method context
+
+    :method is_valid: check if required fields is correct
+    :method to_data: returns the data in format to be encoded by urllib as a
+    list of tuples
+
+    """
 
     def __init__(self, **kwargs):
         self.number = kwargs.get('number')

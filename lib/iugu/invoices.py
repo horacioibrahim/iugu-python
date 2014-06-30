@@ -6,6 +6,14 @@ import merchant, config, base, errors
 
 class IuguInvoice(object):
 
+    """
+
+    This class allows handling invoices. The invoice is used to customers to
+    make payments
+
+      => http://iugu.com/referencias/api#faturas
+    """
+
     API_TOKEN = config.API_TOKEN # TODO to remove it
     __conn = base.IuguRequests()
 
