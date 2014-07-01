@@ -43,14 +43,18 @@ Now you can to create charge
 ```python
 charge = client.create_charge(EMAIL_CUSTOMER, item, token=token.id)
 ```
-Or create a blank_slip (In Brazil "Boleto Bancário")
+Check invoice ID created. All payment pass by Invoice.
 ```
-client.create_charge(EMAIL_CUSTOMER, item)
+charge.invoice_id
+```
+Or create a blank_slip ("Boleto Bancário")
+```
+charge = client.create_charge(EMAIL_CUSTOMER, item)
  => https://api.iugu.com/v1/charge
 ```
 ### Customer operations ###
 ```python
-from iugu.customer import IuguCustomer
+from iugu.customers import IuguCustomer
 client = IuguCustomer()
 customer = client.create(email='your_customer@example.com')
  => https://api.iugu.com/v1/customers
@@ -77,7 +81,7 @@ customer.remove() # by current instance
 ### Operations with lists of customer ###
 Get all customer
 ```python
-from iugu.customer import IuguCustomer
+from iugu.customers import IuguCustomer
 client = IuguCustomer()
 # your flavor of options
 # client.getitems([limit, skip, query, sort, created_at_from, created_at_to,
@@ -86,9 +90,11 @@ client = IuguCustomer()
 Use one option per time. Samples:
 client.getitems(limit=30) # Get most recent (latest) 30 customers
 client.getitems(skip=14) # Skip X customers. Useful for pagination
+client.getitems(updated_since="2014-06-05T15:02:40-03:00")
+
+In tests SORT is not support by API:
 client.getitems(sort="-name") # Sort by field >>name<< (descending)
 client.getitems(sort="name") # Sort by field >>name<< (ascending)
-client.getitems(updated_since="2014-06-05T15:02:40-03:00")
 
  => http://iugu.com/referencias/api#listar-os-clientes
 ```
@@ -105,7 +111,7 @@ new_invoice = invoice_obj.create(due_date='24/06/2014',
 ```
 Get invoice by id
 ```
-# not is need previous instance/obj
+# not is need previous instance/obj (classmethod)
 invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
 ```
 Get all invoices
@@ -121,7 +127,8 @@ invoices = IuguInvoice.getitems(sort="-email") # DESC
 invoices = IuguInvoice.getitems(sort="email") # ASC
 ...
 ```
-Edit/change invoice
+Edit/change invoice. Only invoices with status "draft" can be changed all fields
+otherwise (if status pending, cancel or paid) only the logs field can to change
 ```
 invoice_existent = IuguInvoice.get('A4AF853BC5714380A8708B2A4EDA27B3')
 invoice_existent.email = "other@other.com"
@@ -145,6 +152,12 @@ Create a subscription
 ```
 from subscriptions import IuguSubscription
 client = IuguSubscription()
+# from plans import IuguPan
+# plan_x = IuguPlan().create("Plano Collor", "plano_collor")
+# from customers import IuguCustomer
+# mario = IuguCustomer().create(email='supermario@gmail.com')
+# subscription = client.create(customer_id=mario.id,
+#                 plan_identifier=plan_x.identifier)
 subscription = client.create(customer_id="XXX", plan_identifier="XXX")
 ```
 Get one

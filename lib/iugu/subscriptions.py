@@ -147,11 +147,12 @@ class IuguSubscription(base.IuguApi):
         """
         Creates new subscription
 
-        :param customer_id: the ID of a customer
-        :param plan_identifier: the identifier (it's not ID) of a plan
-        :param expires_at: expiration date and next charge
-        :param only_on_charge_success: creates the subscriptions if charge
-        success. It's supported if customer already have payment method
+        :param customer_id: the ID of an existent customer
+        :param plan_identifier: the identifier of a plan (it's not ID)
+        :param expires_at: a string with expiration date and next charge (e.g
+        "DD/MM/YYYY" or "31/12/2014")
+        :param only_on_charge_success: creates the subscriptions if charged
+        with success. It's supported if customer already have payment method
         inserted
         :param subitems: items of subscriptions
 
@@ -168,7 +169,8 @@ class IuguSubscription(base.IuguApi):
     def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
             subitems=None, suspended=None, skip_charge=None, **custom_variables):
         """
-        Returns changed of an existent subscription of type no credit_based
+        Changes a subscriptions with based arguments and Returns modified
+        subscription of type no credit_based
 
         :param sid: ID of an existent subscriptions in API
         :param customer_id: ID of customer
@@ -176,8 +178,13 @@ class IuguSubscription(base.IuguApi):
         :param expires_at: expiration date and date of next charge
         :param subitems: subitems
         :param suspended: boolean to change status of subscription
-        :param skip_charge: ignore charge. Little explanation and obscure of API
+        :param skip_charge: ignore charge. Bit explanation and obscure in API
         :param custom_variables: keywords arguments for multiple purpose
+
+        IMPORTANT 1: When changing customer_id the API returns error "Not found"
+        to existent new user.
+        IMPORTANT 2: Also it's important to note that the previous
+        customer has an invoice.
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         custom_data = self.custom_variables_list(custom_variables)

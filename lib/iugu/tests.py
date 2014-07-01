@@ -38,7 +38,7 @@ class TestMerchant(unittest.TestCase):
         item = merchant.Item("Produto My Test", 1, 10000)
         token = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
                                                '12', '2010', '123')
-        charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token.id)
+        charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token)
         self.assertEqual(charge.is_success(), True)
         invoices.IuguInvoice().remove(invoice_id=charge.invoice_id)
 

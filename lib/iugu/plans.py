@@ -129,15 +129,17 @@ class IuguPlan(object):
                interval_type=None, currency=None, value_cents=None,
                features=None, prices=None):
         """
-        Creates a new plans in API and returns IuguPlan's instance
+        Creates a new plans in API and returns an IuguPlan's instance. The
+        fields require are name, identifier, interval, interval_type and
+        values_cents.
 
-        :param name: name of plan
-        :param identifier: unique plan identifier in API context
-        :param interval: duration of plan (e.g 12 to one year)
-        :param interval_type: count in "weeks" or "months"
+        :param name: name of a plan
+        :param identifier: unique name identifier in API plan context
+        :param interval: an integer that define duration (e.g 12 to one year)
+        :param interval_type: a string with "weeks" or "months"
         :param currency: only support BRL. If different raise exception
-        :param value_cents: price of plans in cents
-        :param prices: definition in API is obscure
+        :param value_cents: an integer with price in cents (e.g 1000 > 10.00)
+        :param prices: a list of prices. The definition in API is obscure
         :param features: details with features that must be a list with
         instance of Features
         """

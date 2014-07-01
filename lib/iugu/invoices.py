@@ -12,11 +12,11 @@ class IuguInvoice(base.IuguApi):
     make payments.
 
     :attribute class data: is a descriptor that carries rules of API fields.
-    Only fields not None or Blank can be sent.
-    :attribute self.status: Accept two option: draft and pending, but can be
+    Only fields not None or not Blank can be sent.
+    :attribute status: Accept two option: draft and pending, but can be
     draft, pending, [paid and canceled (internal use)]
-    :attribute self.logs: is instanced a dictionary like JSON
-    :attribute self.blank_slip: is instanced a dictionary like JSON
+    :attribute logs: is instanced a dictionary like JSON
+    :attribute blank_slip: is instanced a dictionary like JSON
 
       => http://iugu.com/referencias/api#faturas
     """
@@ -234,7 +234,9 @@ class IuguInvoice(base.IuguApi):
         add custom variables. If previously exist the variable is edited
         rather is added
 
-        HINT: Use method save() at handling an instance
+        IMPORTANT: Only invoices with status "draft" can be changed all fields
+        otherwise (if status pending, cancel or paid) only the field logs
+        can to change.
         """
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
 
@@ -252,7 +254,10 @@ class IuguInvoice(base.IuguApi):
 
     def save(self):
         """Save updating a invoice's instance. To add/change custom_variables
-        keywords to use create() or set()"""
+        keywords to use create() or set()
+
+        IMPORTANT: Only invoices with status "draft" can be changed
+        """
         self.data = self.__dict__
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
         response = self.__conn.put(urn, self.data)

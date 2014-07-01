@@ -8,6 +8,7 @@ from urllib2 import urlopen, Request
 # python-iugu package modules
 import base, config
 
+
 class IuguMerchant(base.IuguApi):
 
     def __init__(self, **kwargs):
@@ -16,23 +17,28 @@ class IuguMerchant(base.IuguApi):
 
     def create_payment_token(self, card_number, first_name, last_name,
                              month, year, verification_value, method="credit_card"):
-        """ Returns a token for payment process
+        """Sends data credit card of a customer and Returns a token
+        for payment process without needing to persist personal data
+        of customers.
 
         :param method: string 'credit_card' or options given by API.
         :param card_number: str of card number
         :param first_name: string with consumer/buyer first name
         :param last_name: consumer/buyer last name
-        :param month: two digits input to Month expiry date of card
-        :param year: four digits input to Year expiry date of card
+        :param month: two digits to Month expiry date of card
+        :param year: four digits to Year expiry date of card
         :param verification_value: CVV
         :returns: token_id as id, response, extra_info and method
+
+          => http://iugu.com/referencias/api#tokens-e-cobranca-direta
         """
         urn = "/v1/payment_token"
         data = [('data[last_name]', last_name), ('data[first_name]', first_name),
                 ('data[verification_value]', verification_value),
                 ('data[month]', month), ('data[year]', year),
                 ('data[number]', card_number)]
-        data.append(("account_id", self.account_id))
+
+        data.append(("account_id", self.account_id)) # work less this
         data.append(("test", self.is_mode_test()))
         data.append(("method", method))
         token_data = self.__conn.post(urn, data)
@@ -41,11 +47,12 @@ class IuguMerchant(base.IuguApi):
 
     def create_charge(self, consumer_email, items, token=None, payer=None):
         """
-        Creates an invoice
+        Creates an invoice and returns a direct charge done.
 
-        :param token: used to credit card payments. If None it's used to
-        method=bank_slip
+        :param token: an instance of Token. It's used to credit card payments.
+        If argument token is None it's used to method=bank_slip
         """
+        # TODO: payer and address support
         data = [] # data fields of charge. It'll encode
         urn = "/v1/charge"
 
@@ -57,18 +64,27 @@ class IuguMerchant(base.IuguApi):
             assert type(items) is Item
             data.extend(items.to_data())
 
-        if token:
-            data.append(("token", token))
+        if token and isinstance(token, Token):
+            token_id = token.id
+            data.append(("token", token_id))
         else:
             data.append(("method", "bank_slip"))
 
         data.append(("email", consumer_email))
         results = self.__conn.post(urn, data)
 
-        return Invoice(results)
+        return Charge(results)
 
 
-class Invoice(object):
+class Charge(object):
+
+    """
+    This class receives response of request create_charge. Useful only to view
+    status and invoice_id
+
+    :attribute invoice_id: ID of Invoice created
+
+    """
 
     def __init__(self, invoice):
         self.invoice = invoice
@@ -97,6 +113,11 @@ class Invoice(object):
 
 class Token(object):
 
+    """
+
+    This class is representation of payment method to API.
+
+    """
     def __init__(self, token_data):
         self.token_data = token_data
 
