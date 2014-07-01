@@ -4,20 +4,27 @@ __author__ = 'horacioibrahim'
 # python-iugu package modules
 import merchant, config, base, errors
 
-class IuguInvoice(object):
+class IuguInvoice(base.IuguApi):
 
     """
 
     This class allows handling invoices. The invoice is used to customers to
-    make payments
+    make payments.
+
+    :attribute class data: is a descriptor that carries rules of API fields.
+    Only fields not None or Blank can be sent.
+    :attribute self.status: Accept two option: draft and pending, but can be
+    draft, pending, [paid and canceled (internal use)]
+    :attribute self.logs: is instanced a dictionary like JSON
+    :attribute self.blank_slip: is instanced a dictionary like JSON
 
       => http://iugu.com/referencias/api#faturas
     """
 
-    API_TOKEN = config.API_TOKEN # TODO to remove it
     __conn = base.IuguRequests()
 
     def __init__(self, item=None, **kwargs):
+        super(IuguInvoice, self).__init__(**kwargs)
         self.id = kwargs.get("id")
         self.due_date = kwargs.get("due_date")
         self.currency = kwargs.get("currency")
@@ -61,7 +68,6 @@ class IuguInvoice(object):
                 assert isinstance(item, merchant.Item), "item must be instance of Item"
                 self.items = item
 
-
         self.variables = kwargs.get("variables")
         self.logs = kwargs.get("logs")
         self.custom_variables = kwargs.get("custom_variables")
@@ -85,6 +91,7 @@ class IuguInvoice(object):
         credits = kwargs.get("credits")
         items = kwargs.get("items")
         email = kwargs.get("email")
+        custom_data = kwargs.get("custom_data")
 
         data = []
 
@@ -154,6 +161,9 @@ class IuguInvoice(object):
         if self.email:
             data.append(("email", self.email))
 
+        if custom_data:
+            data.extend(custom_data)
+
         self._data = data
 
     def data_del(self):
@@ -164,18 +174,17 @@ class IuguInvoice(object):
     def create(self, draft=False, return_url=None, email=None, expired_url=None,
                notification_url=None, tax_cents=None, discount_cents=None,
                customer_id=None, ignore_due_email=False, subscription_id=None,
-               credits=None, due_date=None, items=None):
+               credits=None, due_date=None, items=None, **custom_variables):
         """
-        Creates an invoice
+        Creates an invoice and returns owns class
 
         :param subscription_id: must be existent subscription from API
         :param customer_id: must be API customer_id (existent customer)
-        :param items: must be item instance
-
-        TODO: to support logs and custom_variables
+        :param items: must be item instance of merchant.Item()
 
           => http://iugu.com/referencias/api#faturas
         """
+        urn = "/v1/invoices"
 
         # handling required fields
         if not due_date:
@@ -189,7 +198,7 @@ class IuguInvoice(object):
 
         if not items:
             if self.items:
-                # At create items is required. If it not passed as args,
+                # items are required. If it not passed as args,
                 # it must to exist at least in instance object
                 items = self.items # "force" declaring locally
             else:
@@ -198,30 +207,25 @@ class IuguInvoice(object):
 
         if not email:
             if self.email:
-                # At create email is required. If it not passed as args,
+                # email is required. If it not passed as args,
                 # it must to exist at least in instance object
                 email = self.email # "force" declaring locally
             else:
                 raise errors.IuguInvoiceException(value="Required customer" \
                                     " email is empty.")
 
-        # to declare all variables local before locals().copy()
+        custom_data = self.custom_variables_list(custom_variables)
+        # to declare all variables local before calling locals().copy()
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
-
-        #if self.email is None or self.due_date is None or \
-             #   self.items is None:
-           # raise errors.IuguInvoiceException
-
         self.data = kwargs_local
-
-        urn = "/v1/invoices"
         response = self.__conn.post(urn, self.data)
-        invoice = IuguInvoice(item=self.items, **response) # TODO: review item arg if required
+        invoice = IuguInvoice(**response)
         return invoice
 
     @classmethod
     def get(self, invoice_id):
+        """Gets one invoice with base in invoice_id and returns instance"""
         data = []
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.__conn.get(urn, data)
@@ -233,7 +237,16 @@ class IuguInvoice(object):
                  created_at_to=None, query=None, updated_since=None, sort=None,
                  customer_id=None):
         """
-        Gets invoices by API default limited 100.
+        Gets a list of invoices where the API default is limited 100. Returns
+        a list of IuguInvoice
+
+        :param limit: limits the number of invoices returned by API
+        :param skip: skips a numbers of invoices where more recent insert
+        ordering. Useful to pagination.
+        :param query: filters based in value (case insensitive)
+        :param sort: sorts based in field. Use minus signal to determine the
+        direction DESC or ASC (e.g sort="-email"). IMPORTANT: not work by API
+        :return: list of IuguInvoice instances
         """
         data = []
         urn = "/v1/invoices/"
@@ -278,30 +291,32 @@ class IuguInvoice(object):
                return_url=None, expired_url=None, notification_url=None,
                tax_cents=None, discount_cents=None, customer_id=None,
                ignore_due_email=False, subscription_id=None, credits=None,
-               items=None):
+               items=None, **custom_variables):
+        """ Updates/changes a invoice that already exists
+
+        :param custom_variables: is keywords parameters where we can edit or
+        add custom variables. If previously exist the variable is edited
+        rather is added
+
+        HINT: Use method save() at handling an instance
+        """
+        urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
 
         if items is not None:
             assert isinstance(items, merchant.Item), "item must be instance of Item"
 
-        # to declare all variables local before locals().copy()
+        custom_data = self.custom_variables_list(custom_variables)
+        # to declare all variables local before calling locals().copy()
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
-        changes_count = len([ k for k, v in kwargs_local.items() if v is not None])
-
-        if changes_count < 3:
-            raise errors.IuguInvoiceException(value="At least one field is "\
-                "required to edit/change")
-
         self.data = kwargs_local
-
-
-        urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.__conn.put(urn, self.data)
 
         return IuguInvoice(**response)
 
     def save(self):
-
+        """Save updating a invoice's instance. To add/change custom_variables
+        keywords to use create() or set()"""
         self.data = self.__dict__
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
         response = self.__conn.put(urn, self.data)
@@ -310,7 +325,7 @@ class IuguInvoice(object):
 
     def remove(self, invoice_id=None):
         """
-        Removes an invoice by id or instance
+        Removes an invoice by id or instance and returns None
         """
         if not invoice_id:
             if self.id:
@@ -326,7 +341,10 @@ class IuguInvoice(object):
                 self.__dict__[k] = None
 
     def cancel(self):
+        """Cancels an instance of invoice and returns own invoice with status
+        canceled"""
         urn = "/v1/invoices/{invoice_id}/cancel".format(invoice_id=self.id)
+
         if self.status == "pending":
             response = self.__conn.put(urn, [])
             obj = IuguInvoice(**response)
@@ -338,6 +356,11 @@ class IuguInvoice(object):
 
     @classmethod
     def to_cancel(self, invoice_id):
+        """Cancels an invoice with base in invoice ID and returns own
+        invoice with status canceled
+
+          => http://iugu.com/referencias/api#cancelar-uma-fatura
+        """
         urn = "/v1/invoices/{invoice_id}/cancel".format(invoice_id=invoice_id)
         response = self.__conn.put(urn, [])
         obj = IuguInvoice(**response)
@@ -345,6 +368,10 @@ class IuguInvoice(object):
         return obj
 
     def refund(self):
+        """Makes refund of an instance of invoice
+
+          => http://iugu.com/referencias/api#reembolsar-uma-fatura
+        """
         urn = "/v1/invoices/{invoice_id}/refund".format(invoice_id=self.id)
         if self.status == "paid":
             response = self.__conn.post(urn, [])

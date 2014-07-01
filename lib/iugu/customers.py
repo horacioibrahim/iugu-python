@@ -58,10 +58,9 @@ class IuguCustomer(base.IuguApi):
         else:
             raise errors.IuguGeneralException(value="E-mail required is empty")
 
-        for k, v in custom_variables.items():
-            data.append(("custom_variables[][name]", k.lower()))
-            data.append(("custom_variables[][value]", v))
-
+        custom_data = self.custom_variables_list(custom_variables)
+        if custom_data:
+            data.extend(custom_data)
         customer = self.__conn.post(urn, data)
         instance = IuguCustomer(**customer)
 
@@ -69,12 +68,11 @@ class IuguCustomer(base.IuguApi):
 
     @classmethod
     def get(self, customer_id):
-        """Gets one customer with id based and returns an instance"""
+        """Gets one customer based in iD and returns an instance"""
         data = []
         urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
         customer = self.__conn.get(urn, data)
         instance = IuguCustomer(**customer)
-        instance.api_token = self.API_TOKEN # TODO: remove it and test
 
         return instance
 
@@ -96,10 +94,9 @@ class IuguCustomer(base.IuguApi):
         if notes:
             data.append(("notes", notes))
 
-        for k, v in custom_variables.items():
-            data.append(("custom_variables[][name]", k.lower()))
-            data.append(("custom_variables[][value]", v))
-
+        custom_data = self.custom_variables_list(custom_variables)
+        if custom_data:
+            data.extend(custom_data)
         customer = self.__conn.put(urn, data)
 
         return IuguCustomer(**customer)
@@ -200,7 +197,7 @@ class IuguPaymentMethod(object):
         self.customer_id = kwargs.get('customer_id') # useful create Payment by customer ID
         self.customer = customer
         self.description = kwargs.get('description')
-        self.item_type = item_type # TODO **load?
+        self.item_type = item_type # support only credit_card
         self.token = kwargs.get('token') # data credit card token
         self.set_as_default = kwargs.get('set_as_default')
         self.id = kwargs.get('id')

@@ -47,7 +47,8 @@ class IuguMerchant(base.IuguApi):
         :param token: used to credit card payments. If None it's used to
         method=bank_slip
         """
-        data = [] # data fields of carge. It'll encode
+        data = [] # data fields of charge. It'll encode
+        urn = "/v1/charge"
 
         if isinstance(items, list):
             for item in items:
@@ -56,10 +57,6 @@ class IuguMerchant(base.IuguApi):
         else:
             assert type(items) is Item
             data.extend(items.to_data())
-
-        urn = "/v1/charge"
-        # data fields of charge
-        # data.append(("api_token", self.api_token))
 
         if token:
             data.append(("token", token))

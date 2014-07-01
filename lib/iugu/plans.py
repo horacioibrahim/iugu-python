@@ -5,7 +5,16 @@ import base, config, errors
 
 class IuguPlan(object):
 
-    API_TOKEN = config.API_TOKEN
+    """
+
+    This class allows handling plans. Basically contains a CRUD
+
+    :attribute data: is a descriptor and their setters carries the rules
+
+      => http://iugu.com/referencias/api#criar-um-plano
+
+    """
+
     __conn = base.IuguRequests()
 
     def __init__(self, **kwargs):
@@ -35,10 +44,11 @@ class IuguPlan(object):
                 self.features.append(obj_feature)
 
     def is_valid(self):
-        """ Required fields to send to API. Remember that currency and
-        value_cents will saved in prices scope. Because not to use validate
-        with returned data of API.
-        IMPORTANT: This is useful before send for API.
+        """Checks required fields to send to API.
+
+        IMPORTANT: Only to use before send request for API. The fields currency
+        and value_cents will saved in prices scope. Because not to use validate
+        with returned data by API.
         """
 
         if self.name and self.identifier and self.interval and \
@@ -53,7 +63,8 @@ class IuguPlan(object):
 
     @data.setter
     def data(self, kwargs):
-        """ Prepares and validates required fields to send to API as urlencoded
+        """Defines data and validates required fields to send to API.
+        Returns data as list for urlencoded.
         """
         data = []
 
@@ -118,8 +129,19 @@ class IuguPlan(object):
                interval_type=None, currency=None, value_cents=None,
                features=None, prices=None):
         """
-        Creates a new plans
+        Creates a new plans in API and returns IuguPlan's instance
+
+        :param name: name of plan
+        :param identifier: unique plan identifier in API context
+        :param interval: duration of plan (e.g 12 to one year)
+        :param interval_type: count in "weeks" or "months"
+        :param currency: only support BRL. If different raise exception
+        :param value_cents: price of plans in cents
+        :param prices: definition in API is obscure
+        :param features: details with features that must be a list with
+        instance of Features
         """
+        urn = "/v1/plans"
 
         if not name:
             if self.name:
@@ -163,7 +185,6 @@ class IuguPlan(object):
             if self.currency:
                 currency = self.currency
 
-        urn = "/v1/plans"
         kwargs_local = locals().copy()
         kwargs_local.pop('self') # prevent error of multiple value for args
         self.data = kwargs_local
@@ -175,7 +196,9 @@ class IuguPlan(object):
                interval_type=None, currency=None, value_cents=None,
                features=None, prices=None):
         """
-        Edits existent plan
+        Edits/changes existent plan and returns IuguPlan's instance
+
+        :param plan_id: ID number of a existent plan
         """
         urn = "/v1/plans/{plan_id}".format(plan_id=plan_id)
         kwargs_local = locals().copy()
@@ -185,6 +208,8 @@ class IuguPlan(object):
         return IuguPlan(**response)
 
     def save(self):
+        """Saves an instance of IuguPlan and return own class instance
+        modified"""
         urn = "/v1/plans/{plan_id}".format(plan_id=self.id)
         self.data = self.__dict__
         response = self.__conn.put(urn, self.data)
@@ -192,6 +217,7 @@ class IuguPlan(object):
 
     @classmethod
     def get(self, plan_id):
+        """Gets one plan based in ID and returns an instance"""
         data = []
         urn = "/v1/plans/{plan_id}".format(plan_id=plan_id)
         response = self.__conn.get(urn, data)
@@ -199,6 +225,10 @@ class IuguPlan(object):
 
     @classmethod
     def get_by_identifier(self, identifier):
+        """Gets one plan based in identifier and returns an instance
+
+        :param identifier: it's an unique identifier plan in API
+        """
         data = []
         urn = "/v1/plans/identifier/{identifier}".format(identifier=identifier)
         response = self.__conn.get(urn, data)
@@ -209,6 +239,15 @@ class IuguPlan(object):
                  sort=None):
         """
         Gets plans by API default limited 100.
+
+        :param limit: limits the number of plans returned by API (default
+        and immutable of API is 100)
+        :param skip: skips a numbers of plans where more recent insert
+        ordering. Useful to pagination.
+        :param query: filters based in value (case insensitive)
+        :param sort: sorts based in field. Use minus signal to determine the
+        direction DESC or ASC (e.g sort="-email"). IMPORTANT: not work by API
+        :return: list of IuguPlan's instances
         """
         data = []
         urn = "/v1/plans/"
@@ -248,7 +287,7 @@ class IuguPlan(object):
 
     def remove(self, plan_id=None):
         """
-        Removes an object of IuguPlan or by plan_id
+        Removes an instance or passing a plan_id
         """
         if plan_id:
             to_remove = plan_id
@@ -269,6 +308,17 @@ class IuguPlan(object):
 
 
 class Price(object):
+
+    """
+
+    This class is useful for handling field prices of API. Prices in API is a
+    field of plans context it contains list of values with some fields
+    exclusively returned by API.
+
+    :method is_valid: check if required fields are correct
+    :method to_data: returns a list of tuples for urlencoded
+
+    """
 
     def __init__(self, **kwargs):
         self.id = kwargs.get("id")
@@ -306,6 +356,14 @@ class Price(object):
 
 class Feature(object):
 
+    """
+
+    This class abstract features of Plan context.
+
+    :method is_valid: check if required fields are correct
+    :method to_data: returns a list of tuples for urlencoded
+    """
+
     def __init__(self, **kwargs):
         self.id = kwargs.get("id")
         self.identifier = kwargs.get("identifier")
@@ -321,7 +379,7 @@ class Feature(object):
         """
         Required to send to API
         """
-        if self.name and self.identifier and self.value:
+        if self.name and self.identifier and self.value > 0:
             return True
         else:
             return False

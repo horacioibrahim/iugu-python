@@ -5,6 +5,15 @@ import base, config, errors, merchant
 
 class IuguSubscription(base.IuguApi):
 
+    """
+
+    This class allows handling subscriptions an CRUD with create, get, set,
+    save and remove plus add-ons as getitems, suspend, activate, change_plan,
+    is_credit_based.
+
+    :attribute class data: is a description it carries rules of data to API
+    """
+
     _conn = base.IuguRequests()
 
     def __init__(self, **kwargs):
@@ -66,7 +75,7 @@ class IuguSubscription(base.IuguApi):
         self.expires_at = kwargs.get("expires_at")
         self.only_on_charge_success = kwargs.get("only_on_charge_success")
         self.subitems = kwargs.get("subitems")
-        self.custom_variables = kwargs.get("custom_variables")
+        self.custom_variables = kwargs.get("custom_data")
         self.credits_based = kwargs.get("credits_based")
         self.credits_min = kwargs.get("credits_min")
         self.credits_cycle = kwargs.get("credits_cycle")
@@ -99,8 +108,8 @@ class IuguSubscription(base.IuguApi):
                 raise errors.IuguSubscriptionsException("The subitems must be " \
                     "a list of obj Item")
 
-        if self.custom_variables:
-            pass
+        if self.custom_variables: # TODO: to create test
+            data.extend(self.custom_variables)
 
         # credit based subscriptions
         if self.credits_based is not None:
@@ -134,11 +143,22 @@ class IuguSubscription(base.IuguApi):
         del self._data
 
     def create(self, customer_id, plan_identifier, expires_at=None,
-               only_on_charge_success=False, subitems=None, custom_variables=None):
+               only_on_charge_success=False, subitems=None, **custom_variables):
         """
         Creates new subscription
+
+        :param customer_id: the ID of a customer
+        :param plan_identifier: the identifier (it's not ID) of a plan
+        :param expires_at: expiration date and next charge
+        :param only_on_charge_success: creates the subscriptions if charge
+        success. It's supported if customer already have payment method
+        inserted
+        :param subitems: items of subscriptions
+
+          => http://iugu.com/referencias/api#criar-uma-assinatura
         """
         urn = "/v1/subscriptions"
+        custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -217,14 +237,21 @@ class IuguSubscription(base.IuguApi):
         return subscriptions_objs
 
     def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            subitems=None, custom_variables=None, suspended=None,
-            skip_charge=None):
+            subitems=None, suspended=None, skip_charge=None, **custom_variables):
         """
-        Returns changed an existent subscription no credit_based
+        Returns changed of an existent subscription of type no credit_based
 
         :param sid: ID of an existent subscriptions in API
+        :param customer_id: ID of customer
+        :param plan_identifier: identifier of a Plan (it's not ID)
+        :param expires_at: expiration date and date of next charge
+        :param subitems: subitems
+        :param suspended: boolean to change status of subscription
+        :param skip_charge: ignore charge. Little explanation and obscure of API
+        :param custom_variables: keywords arguments for multiple purpose
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
+        custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -233,9 +260,9 @@ class IuguSubscription(base.IuguApi):
         return IuguSubscription(**response)
 
     def save(self):
-        """ Saves and returns an instance of this class that was persisted,
-        before, in API or raise error for no instance.
-        """
+        """Saves an instance of subscription and return own class instance
+        modified"""
+
         if self.id:
             sid = self.id
         else:
@@ -244,14 +271,19 @@ class IuguSubscription(base.IuguApi):
 
         kwargs = {}
         # TODO: to improve this ineffective approach
-        # Currently this check if the set's parameters was passed
+        # Currently this check if the required set's parameters was passed
         for k, v in self.__dict__.items():
             if v is not None:
                 if k == "customer_id" or k == "plan_identifier" or \
                     k == "expires_at" or k == "subitems" or \
                     k == "custom_variables" or k == "suspended" or \
-                    k == "skip_charge":
+                    k == "skip_charge" or k == "custom_variables":
                     kwargs[k] = v
+                    last_valid_k = k
+
+                if isinstance(v, list) and len(v) == 0 and last_valid_k:
+                    # solves problem with arguments of empty lists
+                    del kwargs[last_valid_k]
 
         return self.set(sid, **kwargs)
 
@@ -297,6 +329,8 @@ class IuguSubscription(base.IuguApi):
         Activates an existent subscriptions
 
         :param sid: ID of an existent subscriptions in API
+
+        NOTE: This option not work fine by API
         """
         if not sid:
             if self.id:
@@ -346,6 +380,16 @@ class IuguSubscription(base.IuguApi):
 
 class SubscriptionCreditsBased(IuguSubscription):
 
+    """
+
+    This class make additional approaches for subscriptions based in credits.
+    Addition methods as add_credits and remove_credits.
+
+    :method create: it has parameters different of class extended
+    :method set: it has parameters different of class extended
+
+    """
+
     def __init__(self, **kwargs):
         super(SubscriptionCreditsBased, self).__init__(**kwargs)
         self.credits_based = True
@@ -355,12 +399,17 @@ class SubscriptionCreditsBased(IuguSubscription):
 
     def create(self, customer_id, credits_cycle, price_cents=None,
                credits_min=None, expires_at=None, only_on_charge_success=None,
-               subitems=None, custom_variables=None):
+               subitems=None, **custom_variables):
 
         if price_cents is None or price_cents <= 0:
             raise errors.IuguSubscriptionsException(value="price_cents must be " \
                                          "greater than 0")
+
         credits_based = self.credits_based
+        custom_data = [] # used to extend custom_variables in data_set()
+        for k, v in custom_variables.items():
+            custom_data.append(("custom_variables[][name]", k.lower()))
+            custom_data.append(("custom_variables[][value]", v))
 
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
@@ -371,15 +420,16 @@ class SubscriptionCreditsBased(IuguSubscription):
         return SubscriptionCreditsBased(**response)
 
     def set(self, sid, customer_id=None, expires_at=None,
-            subitems=None, custom_variables=None, suspended=None,
-            skip_charge=None, price_cents=None, credits_cycle=None,
-            credits_min=None):
+            subitems=None, suspended=None, skip_charge=None, price_cents=None,
+            credits_cycle=None, credits_min=None, **custom_variables):
         """
         Changes an existent subscription no credit_based
 
         :param sid: ID of an existent subscriptions in API
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
+        credits_based = self.credits_based
+        custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -388,8 +438,10 @@ class SubscriptionCreditsBased(IuguSubscription):
         return SubscriptionCreditsBased(**response)
 
     def save(self):
-        """ Saves an instance of this class that was persisted, before, in API
-        or raise error if no instance
+        """ Saves an instance of this class that was persisted or raise error
+         if no instance.
+
+        NOTE: to use create() or set() for add/change custom_variables
         """
         if self.id:
             sid = self.id
@@ -408,6 +460,11 @@ class SubscriptionCreditsBased(IuguSubscription):
                     k == "price_cents" or k == "credits_cycle" or \
                     k == "credits_min":
                     kwargs[k] = v
+                    last_valid_k = k
+
+                if isinstance(v, list) and len(v) == 0 and last_valid_k:
+                    # solves problem with arguments of empty lists
+                    del kwargs[last_valid_k]
 
         return self.set(sid, **kwargs)
 

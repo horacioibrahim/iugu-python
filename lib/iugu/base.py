@@ -42,6 +42,21 @@ class IuguApi(object):
 
         return str(config.API_MODE_TEST).lower()
 
+    def custom_variables_list(self, custom_variables):
+        """Unpacking dictionary of keywords arguments and returns a list with
+        data fit for to send API"""
+
+        custom_data = [] # used to extend custom_variables in data_set()
+        if isinstance(custom_variables, dict):
+            for k, v in custom_variables.items():
+                custom_data.append(("custom_variables[][name]", k.lower()))
+                custom_data.append(("custom_variables[][value]", v))
+
+        if custom_data:
+            return custom_data
+
+        return None
+
 
 class IuguRequests(IuguApi):
 
