@@ -39,8 +39,7 @@ class IuguMerchant(base.IuguApi):
 
         return Token(token_data)
 
-    def create_charge(self, consumer_email, items,
-                      token=None, payer=None):
+    def create_charge(self, consumer_email, items, token=None, payer=None):
         """
         Creates an invoice
 

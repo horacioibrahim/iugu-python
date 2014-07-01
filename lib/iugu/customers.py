@@ -66,16 +66,6 @@ class IuguCustomer(base.IuguApi):
 
         return instance
 
-    @classmethod
-    def get(self, customer_id):
-        """Gets one customer based in iD and returns an instance"""
-        data = []
-        urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
-        customer = self.__conn.get(urn, data)
-        instance = IuguCustomer(**customer)
-
-        return instance
-
     def set(self, customer_id, name=None, notes=None, **custom_variables):
         """ Updates/changes a customer that already exists
 
@@ -105,28 +95,15 @@ class IuguCustomer(base.IuguApi):
         """Save updating a customer's instance"""
         return self.set(self.id, name=self.name, notes=self.notes)
 
-    def delete(self, customer_id=None):
-        """Deletes a customer of instance or by passing an id.
-        And return the removed object"""
+    @classmethod
+    def get(self, customer_id):
+        """Gets one customer based in iD and returns an instance"""
         data = []
+        urn = "/v1/customers/{customer_id}".format(customer_id=str(customer_id))
+        customer = self.__conn.get(urn, data)
+        instance = IuguCustomer(**customer)
 
-        if self.id:
-            # instance of class (customer already exist)
-            _customer_id = self.id
-        else:
-            if customer_id:
-                _customer_id = customer_id
-            else:
-                # instance of class (not saved)
-                raise TypeError("It's not instance of object returned or " \
-                                "customer_id is empty.")
-
-        urn = "/v1/customers/" + str(_customer_id)
-        customer = self.__conn.delete(urn, data)
-
-        return IuguCustomer(**customer)
-
-    remove = delete # remove for keep the semantic of API
+        return instance
 
     @classmethod
     def getitems(self, limit=None, skip=None, created_at_from=None,
@@ -180,6 +157,29 @@ class IuguCustomer(base.IuguApi):
             customers_objects.append(obj_customer)
 
         return customers_objects
+
+    def delete(self, customer_id=None):
+        """Deletes a customer of instance or by passing an id.
+        And return the removed object"""
+        data = []
+
+        if self.id:
+            # instance of class (customer already exist)
+            _customer_id = self.id
+        else:
+            if customer_id:
+                _customer_id = customer_id
+            else:
+                # instance of class (not saved)
+                raise TypeError("It's not instance of object returned or " \
+                                "customer_id is empty.")
+
+        urn = "/v1/customers/" + str(_customer_id)
+        customer = self.__conn.delete(urn, data)
+
+        return IuguCustomer(**customer)
+
+    remove = delete # remove for keep the semantic of API
 
 
 class IuguPaymentMethod(object):

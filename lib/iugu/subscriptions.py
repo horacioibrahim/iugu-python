@@ -165,6 +165,57 @@ class IuguSubscription(base.IuguApi):
         response = self._conn.post(urn, self.data)
         return IuguSubscription(**response)
 
+    def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
+            subitems=None, suspended=None, skip_charge=None, **custom_variables):
+        """
+        Returns changed of an existent subscription of type no credit_based
+
+        :param sid: ID of an existent subscriptions in API
+        :param customer_id: ID of customer
+        :param plan_identifier: identifier of a Plan (it's not ID)
+        :param expires_at: expiration date and date of next charge
+        :param subitems: subitems
+        :param suspended: boolean to change status of subscription
+        :param skip_charge: ignore charge. Little explanation and obscure of API
+        :param custom_variables: keywords arguments for multiple purpose
+        """
+        urn = "/v1/subscriptions/{sid}".format(sid=sid)
+        custom_data = self.custom_variables_list(custom_variables)
+        kwargs_local = locals().copy()
+        kwargs_local.pop('self')
+        self.data = kwargs_local
+        response = self._conn.put(urn, self.data)
+        response["_type"] = "general"
+        return IuguSubscription(**response)
+
+    def save(self):
+        """Saves an instance of subscription and return own class instance
+        modified"""
+
+        if self.id:
+            sid = self.id
+        else:
+            raise errors.IuguSubscriptionsException(value="Save is support "\
+                        "only to returned API object.")
+
+        kwargs = {}
+        # TODO: to improve this ineffective approach
+        # Currently this check if the required set's parameters was passed
+        for k, v in self.__dict__.items():
+            if v is not None:
+                if k == "customer_id" or k == "plan_identifier" or \
+                    k == "expires_at" or k == "subitems" or \
+                    k == "custom_variables" or k == "suspended" or \
+                    k == "skip_charge" or k == "custom_variables":
+                    kwargs[k] = v
+                    last_valid_k = k
+
+                if isinstance(v, list) and len(v) == 0 and last_valid_k:
+                    # solves problem with arguments of empty lists
+                    del kwargs[last_valid_k]
+
+        return self.set(sid, **kwargs)
+
     @classmethod
     def get(self, sid):
         """
@@ -235,57 +286,6 @@ class IuguSubscription(base.IuguApi):
             subscriptions_objs.append(obj_subscription)
 
         return subscriptions_objs
-
-    def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
-            subitems=None, suspended=None, skip_charge=None, **custom_variables):
-        """
-        Returns changed of an existent subscription of type no credit_based
-
-        :param sid: ID of an existent subscriptions in API
-        :param customer_id: ID of customer
-        :param plan_identifier: identifier of a Plan (it's not ID)
-        :param expires_at: expiration date and date of next charge
-        :param subitems: subitems
-        :param suspended: boolean to change status of subscription
-        :param skip_charge: ignore charge. Little explanation and obscure of API
-        :param custom_variables: keywords arguments for multiple purpose
-        """
-        urn = "/v1/subscriptions/{sid}".format(sid=sid)
-        custom_data = self.custom_variables_list(custom_variables)
-        kwargs_local = locals().copy()
-        kwargs_local.pop('self')
-        self.data = kwargs_local
-        response = self._conn.put(urn, self.data)
-        response["_type"] = "general"
-        return IuguSubscription(**response)
-
-    def save(self):
-        """Saves an instance of subscription and return own class instance
-        modified"""
-
-        if self.id:
-            sid = self.id
-        else:
-            raise errors.IuguSubscriptionsException(value="Save is support "\
-                        "only to returned API object.")
-
-        kwargs = {}
-        # TODO: to improve this ineffective approach
-        # Currently this check if the required set's parameters was passed
-        for k, v in self.__dict__.items():
-            if v is not None:
-                if k == "customer_id" or k == "plan_identifier" or \
-                    k == "expires_at" or k == "subitems" or \
-                    k == "custom_variables" or k == "suspended" or \
-                    k == "skip_charge" or k == "custom_variables":
-                    kwargs[k] = v
-                    last_valid_k = k
-
-                if isinstance(v, list) and len(v) == 0 and last_valid_k:
-                    # solves problem with arguments of empty lists
-                    del kwargs[last_valid_k]
-
-        return self.set(sid, **kwargs)
 
     def remove(self, sid=None):
         """

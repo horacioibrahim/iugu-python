@@ -223,6 +223,42 @@ class IuguInvoice(base.IuguApi):
         invoice = IuguInvoice(**response)
         return invoice
 
+    def set(self, invoice_id, email=None, due_date=None,
+               return_url=None, expired_url=None, notification_url=None,
+               tax_cents=None, discount_cents=None, customer_id=None,
+               ignore_due_email=False, subscription_id=None, credits=None,
+               items=None, **custom_variables):
+        """ Updates/changes a invoice that already exists
+
+        :param custom_variables: is keywords parameters where we can edit or
+        add custom variables. If previously exist the variable is edited
+        rather is added
+
+        HINT: Use method save() at handling an instance
+        """
+        urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
+
+        if items is not None:
+            assert isinstance(items, merchant.Item), "item must be instance of Item"
+
+        custom_data = self.custom_variables_list(custom_variables)
+        # to declare all variables local before calling locals().copy()
+        kwargs_local = locals().copy()
+        kwargs_local.pop('self')
+        self.data = kwargs_local
+        response = self.__conn.put(urn, self.data)
+
+        return IuguInvoice(**response)
+
+    def save(self):
+        """Save updating a invoice's instance. To add/change custom_variables
+        keywords to use create() or set()"""
+        self.data = self.__dict__
+        urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
+        response = self.__conn.put(urn, self.data)
+
+        return IuguInvoice(**response)
+
     @classmethod
     def get(self, invoice_id):
         """Gets one invoice with base in invoice_id and returns instance"""
@@ -286,42 +322,6 @@ class IuguInvoice(base.IuguApi):
             invoices_objects.append(obj_invoice)
 
         return invoices_objects
-
-    def set(self, invoice_id, email=None, due_date=None,
-               return_url=None, expired_url=None, notification_url=None,
-               tax_cents=None, discount_cents=None, customer_id=None,
-               ignore_due_email=False, subscription_id=None, credits=None,
-               items=None, **custom_variables):
-        """ Updates/changes a invoice that already exists
-
-        :param custom_variables: is keywords parameters where we can edit or
-        add custom variables. If previously exist the variable is edited
-        rather is added
-
-        HINT: Use method save() at handling an instance
-        """
-        urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
-
-        if items is not None:
-            assert isinstance(items, merchant.Item), "item must be instance of Item"
-
-        custom_data = self.custom_variables_list(custom_variables)
-        # to declare all variables local before calling locals().copy()
-        kwargs_local = locals().copy()
-        kwargs_local.pop('self')
-        self.data = kwargs_local
-        response = self.__conn.put(urn, self.data)
-
-        return IuguInvoice(**response)
-
-    def save(self):
-        """Save updating a invoice's instance. To add/change custom_variables
-        keywords to use create() or set()"""
-        self.data = self.__dict__
-        urn = "/v1/invoices/{invoice_id}".format(invoice_id=self.id)
-        response = self.__conn.put(urn, self.data)
-
-        return IuguInvoice(**response)
 
     def remove(self, invoice_id=None):
         """
