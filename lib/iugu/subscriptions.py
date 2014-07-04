@@ -166,25 +166,22 @@ class IuguSubscription(base.IuguApi):
         response = self._conn.post(urn, self.data)
         return IuguSubscription(**response)
 
-    def set(self, sid, customer_id=None, plan_identifier=None, expires_at=None,
+    def set(self, sid, plan_identifier=None, expires_at=None,
             subitems=None, suspended=None, skip_charge=None, **custom_variables):
         """
         Changes a subscriptions with based arguments and Returns modified
-        subscription of type no credit_based
+        subscription of type no credit_based.
 
         :param sid: ID of an existent subscriptions in API
         :param customer_id: ID of customer
-        :param plan_identifier: identifier of a Plan (it's not ID)
         :param expires_at: expiration date and date of next charge
         :param subitems: subitems
         :param suspended: boolean to change status of subscription
         :param skip_charge: ignore charge. Bit explanation and obscure in API
         :param custom_variables: keywords arguments for multiple purpose
 
-        IMPORTANT 1: When changing customer_id the API returns error "Not found"
-        to existent new user.
-        IMPORTANT 2: Also it's important to note that the previous
-        customer has an invoice.
+        IMPORTANT 1: Removed parameter customer_id. Iugu's support (number 782)
+        says that to change only customer_id isn't supported by API.
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         custom_data = self.custom_variables_list(custom_variables)
@@ -210,7 +207,7 @@ class IuguSubscription(base.IuguApi):
         # Currently this check if the required set's parameters was passed
         for k, v in self.__dict__.items():
             if v is not None:
-                if k == "customer_id" or k == "plan_identifier" or \
+                if  k == "plan_identifier" or \
                     k == "expires_at" or k == "subitems" or \
                     k == "custom_variables" or k == "suspended" or \
                     k == "skip_charge" or k == "custom_variables":
@@ -426,9 +423,9 @@ class SubscriptionCreditsBased(IuguSubscription):
         response["_type"] = "credit_based"
         return SubscriptionCreditsBased(**response)
 
-    def set(self, sid, customer_id=None, expires_at=None,
-            subitems=None, suspended=None, skip_charge=None, price_cents=None,
-            credits_cycle=None, credits_min=None, **custom_variables):
+    def set(self, sid, expires_at=None, subitems=None, suspended=None,
+            skip_charge=None, price_cents=None, credits_cycle=None,
+            credits_min=None, **custom_variables):
         """
         Changes an existent subscription no credit_based
 
@@ -461,7 +458,7 @@ class SubscriptionCreditsBased(IuguSubscription):
         # Currently this check if the set's parameters was passed
         for k, v in self.__dict__.items():
             if v is not None:
-                if k == "customer_id" or k == "expires_at" or \
+                if  k == "expires_at" or \
                     k == "subitems" or k == "custom_variables" or \
                     k == "suspended" or k == "skip_charge" or \
                     k == "price_cents" or k == "credits_cycle" or \
@@ -469,9 +466,10 @@ class SubscriptionCreditsBased(IuguSubscription):
                     kwargs[k] = v
                     last_valid_k = k
 
-                if isinstance(v, list) and len(v) == 0 and last_valid_k:
-                    # solves problem with arguments of empty lists
-                    del kwargs[last_valid_k]
+                    if isinstance(v, list) and len(v) == 0 and last_valid_k:
+                        # solves problem with arguments of empty lists
+                        del kwargs[last_valid_k]
+                        del last_valid_k
 
         return self.set(sid, **kwargs)
 

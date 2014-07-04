@@ -586,11 +586,9 @@ class TestInvoice(unittest.TestCase):
                                               ignore_due_email=ignore_due_email)
         self.assertEqual(invoice_edited.ignore_due_email, ignore_due_email)
 
-    def test_invoice_edit_subscription_id_with_set(self):
-        pass
+    # TODO: def test_invoice_edit_subscription_id_with_set(self):
 
-    def test_invoice_edit_credits_with_set(self):
-        pass
+    # TODO: test_invoice_edit_credits_with_set(self):
 
     def test_invoice_edit_due_date_with_set(self):
         due_date = "31/12/2014"
@@ -648,7 +646,7 @@ class TestInvoice(unittest.TestCase):
         self.assertEqual(re_invoice.status, "canceled")
         invoice.remove()
 
-    @unittest.skip("Support only invoice paid")
+    @unittest.skip("Support only invoice paid") # TODO
     def test_invoice_refund(self):
         re_invoice = self.invoice.refund()
         self.assertEqual(re_invoice.status, "canceled")
@@ -1082,8 +1080,8 @@ class TestPlans(unittest.TestCase):
         plan_c.remove()
 
     @unittest.skip("TODO support this test")
-    def test_plan_getitems_filter_updated_since(self):
-        pass
+    # TODO: def test_plan_getitems_filter_updated_since(self):
+
     @unittest.skip("Sort not work fine. Waiting support of API providers")
     def test_plan_getitems_filter_sort(self):
         pass
@@ -1301,7 +1299,7 @@ class TestSubscriptions(unittest.TestCase):
 
     @unittest.skip("This is not support by API. Return not found")
     def test_subscription_set_customer_id(self):
-        # Test if customer_id changed
+        # Test if customer_id changed. Iugu's support (number 782)
         customer = customers.IuguCustomer().create(name="Cortella",
                                                    email="mcortella@usp.br")
         subscription = subscriptions.IuguSubscription().\
@@ -1534,6 +1532,7 @@ class TestSubscriptions(unittest.TestCase):
 
     @unittest.skip("This is not support by API. Return not found")
     def test_subscription_save_customer_id(self):
+        # Iugu's support (number 782)
         customer = customers.IuguCustomer().create(name="Subs save",
                                                    email="subs_save@local.com")
         self.subscription.customer_id = customer.id
@@ -1618,9 +1617,8 @@ class TestSubscriptions(unittest.TestCase):
         obj = self.subscription.save()
         self.assertEqual(obj.suspended, True)
 
-    @unittest.skip("Waiting API developers to support this question")
-    def test_subscription_save_skip_charge(self):
-        pass
+    # @unittest.skip("Waiting API developers to support this question")
+    # TODO: def test_subscription_save_skip_charge(self):
 
     def test_subscription_save_price_cents(self):
         subscription = subscriptions.SubscriptionCreditsBased()
