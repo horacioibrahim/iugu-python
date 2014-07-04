@@ -7,9 +7,6 @@ Overview
 --------
 This package contains wrapper code used to call the Iugu from Python.
 
-The package also contains a sample script. The code demonstrates the basic use
-of the package for single client.
-
 Prerequisites
 -------------
 In order to use the code in this package, you need to obtain an account
