@@ -5,7 +5,7 @@ Iugu python compatible client for Iugu API v1
 
 Overview
 --------
-This package contains wrapper code used to call the Iugu from Python.
+This package contains the lib code used to call the Iugu API from Python.
 
 Prerequisites
 -------------
