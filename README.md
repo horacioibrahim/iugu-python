@@ -24,10 +24,27 @@ https://iugu.com/signup and change mode in https://iugu.com/a/administration
 In order to run the client sample code, you need a account user token. This is
 automatically created. See https://iugu.com/settings/profile
 
+Quick Install
+-----
+### Using pip ###
+```
+pip install git+https://github.com/horacioibrahim/iugu-python.git
+```
+or
+### Using setup.py ###
+```
+# Downloading package master or release:
+# https://github.com/horacioibrahim/iugu-python/archive/master.zip
+# or https://github.com/horacioibrahim/iugu-python/releases
+unzip iugu-python-master.zip
+cd iugu-python-master
+python setup.py install
+```
+
 Usage (Quick Start)
 -----
 ### Merchant operations ###
-```python
+```
 from iugu.merchant import IuguMerchant, Item
 client = IuguMerchant(account_id="YOUR ACCOUN ID",
                               api_mode_test=True)
