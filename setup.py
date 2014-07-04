@@ -5,7 +5,8 @@ except ImportError:
     from setuptools import setup
 
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib/iugu'))
+from setuptools import find_packages
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 from lib.iugu.version import __version__
 
 setup(
@@ -13,18 +14,19 @@ setup(
   version= __version__,
   author='Horacio Ibrahim',
   author_email='horacioibrahim@gmail.com',
-  packages=['iugu'],
+  packages=find_packages('lib'),
+  package_dir={'': 'lib'},
   scripts=[],
   url='https://github.com/horacioibrahim/iugu-python',
-  license='MIT',
+  license='Apache License',
   description='The Iugu provides a Python REST APIs to create, process and manage payments.',
   long_description="""
 The Iugu provides a Python REST APIs to create, process and manage payments.
 
 http://iugu.com/referencias/api - API Reference
 """,
-  install_requires=['requests'],
   classifiers=[
+    'Development Status :: Production/Stable',
     'Intended Audience :: Developers',
     'Natural Language :: English',
     'Operating System :: OS Independent',
