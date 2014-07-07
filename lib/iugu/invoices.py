@@ -174,13 +174,14 @@ class IuguInvoice(base.IuguApi):
     def create(self, draft=False, return_url=None, email=None, expired_url=None,
                notification_url=None, tax_cents=None, discount_cents=None,
                customer_id=None, ignore_due_email=False, subscription_id=None,
-               credits=None, due_date=None, items=None, **custom_variables):
+               credits=None, due_date=None, items=None, custom_variables=None):
         """
         Creates an invoice and returns owns class
 
         :param subscription_id: must be existent subscription from API
         :param customer_id: must be API customer_id (existent customer)
         :param items: must be item instance of merchant.Item()
+        :para custom_variables: a dict {'key':'value'}
 
           => http://iugu.com/referencias/api#faturas
         """
@@ -214,7 +215,8 @@ class IuguInvoice(base.IuguApi):
                 raise errors.IuguInvoiceException(value="Required customer" \
                                     " email is empty.")
 
-        custom_data = self.custom_variables_list(custom_variables)
+        if custom_variables:
+            custom_data = self.custom_variables_list(custom_variables)
         # to declare all variables local before calling locals().copy()
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
@@ -227,12 +229,11 @@ class IuguInvoice(base.IuguApi):
                return_url=None, expired_url=None, notification_url=None,
                tax_cents=None, discount_cents=None, customer_id=None,
                ignore_due_email=False, subscription_id=None, credits=None,
-               items=None, **custom_variables):
+               items=None, custom_variables=None):
         """ Updates/changes a invoice that already exists
 
-        :param custom_variables: is keywords parameters where we can edit or
-        add custom variables. If previously exist the variable is edited
-        rather is added
+        :param custom_variables: a dict {'key', value}. If previously values
+        exist the variable is edited rather is added
 
         IMPORTANT: Only invoices with status "draft" can be changed all fields
         otherwise (if status pending, cancel or paid) only the field logs
@@ -243,7 +244,8 @@ class IuguInvoice(base.IuguApi):
         if items is not None:
             assert isinstance(items, merchant.Item), "item must be instance of Item"
 
-        custom_data = self.custom_variables_list(custom_variables)
+        if custom_variables:
+            custom_data = self.custom_variables_list(custom_variables)
         # to declare all variables local before calling locals().copy()
         kwargs_local = locals().copy()
         kwargs_local.pop('self')

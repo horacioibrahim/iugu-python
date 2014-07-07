@@ -31,15 +31,13 @@ class IuguCustomer(base.IuguApi):
         self.custom_variables = options.get("custom_variables")
         self.payment = IuguPaymentMethod(self)
 
-    def create(self, name=None, notes=None, email=None, **custom_variables):
+    def create(self, name=None, notes=None, email=None, custom_variables=None):
         """Creates a customer and return an IuguCustomer's instance
 
         :param name: customer name
         :param notes: field to post info's of an user
         :param email: required data of an user
-        :param custom_variables: keywords parameters to multiple purpose (e.g
-        city='Recife', uf='PE'). Key is sent with lower chars (City or CITY is
-        sent as city)
+        :param custom_variables: a dict {'key':'value'}
         """
         data = []
         urn = "/v1/customers"
@@ -58,21 +56,18 @@ class IuguCustomer(base.IuguApi):
         else:
             raise errors.IuguGeneralException(value="E-mail required is empty")
 
-        custom_data = self.custom_variables_list(custom_variables)
-        if custom_data:
+        if custom_variables:
+            custom_data = self.custom_variables_list(custom_variables)
             data.extend(custom_data)
         customer = self.__conn.post(urn, data)
         instance = IuguCustomer(**customer)
 
         return instance
 
-    def set(self, customer_id, name=None, notes=None, **custom_variables):
+    def set(self, customer_id, name=None, notes=None, custom_variables=None):
         """ Updates/changes a customer that already exists
 
-        :param custom_variables: is keywords parameters where we can edit or
-        add custom variables. If previously exist the variable is edited
-        rather is added
-
+        :param custom_variables: is a dict {'key':'value'}
         HINT: Use method save() at handling an instance
         """
         data = []
@@ -84,9 +79,10 @@ class IuguCustomer(base.IuguApi):
         if notes:
             data.append(("notes", notes))
 
-        custom_data = self.custom_variables_list(custom_variables)
-        if custom_data:
+        if custom_variables:
+            custom_data = self.custom_variables_list(custom_variables)
             data.extend(custom_data)
+
         customer = self.__conn.put(urn, data)
 
         return IuguCustomer(**customer)

@@ -130,7 +130,7 @@ class IuguPlan(object):
                features=None, prices=None):
         """
         Creates a new plans in API and returns an IuguPlan's instance. The
-        fields require are name, identifier, interval, interval_type and
+        fields required are name, identifier, interval, interval_type and
         values_cents.
 
         :param name: name of a plan

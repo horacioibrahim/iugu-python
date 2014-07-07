@@ -143,7 +143,8 @@ class IuguSubscription(base.IuguApi):
         del self._data
 
     def create(self, customer_id, plan_identifier, expires_at=None,
-               only_on_charge_success=False, subitems=None, **custom_variables):
+               only_on_charge_success=False, subitems=None,
+               custom_variables=None):
         """
         Creates new subscription
 
@@ -159,7 +160,9 @@ class IuguSubscription(base.IuguApi):
           => http://iugu.com/referencias/api#criar-uma-assinatura
         """
         urn = "/v1/subscriptions"
-        custom_data = self.custom_variables_list(custom_variables)
+        if custom_variables:
+            assert isinstance(custom_variables, dict), "Required a dict"
+            custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -167,7 +170,8 @@ class IuguSubscription(base.IuguApi):
         return IuguSubscription(**response)
 
     def set(self, sid, plan_identifier=None, expires_at=None,
-            subitems=None, suspended=None, skip_charge=None, **custom_variables):
+            subitems=None, suspended=None, skip_charge=None,
+            custom_variables=None):
         """
         Changes a subscriptions with based arguments and Returns modified
         subscription of type no credit_based.
@@ -178,13 +182,15 @@ class IuguSubscription(base.IuguApi):
         :param subitems: subitems
         :param suspended: boolean to change status of subscription
         :param skip_charge: ignore charge. Bit explanation and obscure in API
-        :param custom_variables: keywords arguments for multiple purpose
+        :param custom_variables: a dictionary {'key': 'value'}
 
         IMPORTANT 1: Removed parameter customer_id. Iugu's support (number 782)
         says that to change only customer_id isn't supported by API.
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
-        custom_data = self.custom_variables_list(custom_variables)
+        if custom_variables:
+            assert isinstance(custom_variables, dict), "Required a dict"
+            custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -205,12 +211,13 @@ class IuguSubscription(base.IuguApi):
         kwargs = {}
         # TODO: to improve this ineffective approach
         # Currently this check if the required set's parameters was passed
+        # If changes occurs in set() to revise this k in if used to mount kwargs
         for k, v in self.__dict__.items():
             if v is not None:
                 if  k == "plan_identifier" or \
                     k == "expires_at" or k == "subitems" or \
-                    k == "custom_variables" or k == "suspended" or \
-                    k == "skip_charge" or k == "custom_variables":
+                    k == "suspended" or k == "skip_charge" or \
+                                k == "custom_variables":
                     kwargs[k] = v
                     last_valid_k = k
 
@@ -403,17 +410,23 @@ class SubscriptionCreditsBased(IuguSubscription):
 
     def create(self, customer_id, credits_cycle, price_cents=None,
                credits_min=None, expires_at=None, only_on_charge_success=None,
-               subitems=None, **custom_variables):
+               subitems=None, custom_variables=None):
+        """
+        Create a subscription based in credits and return the instance
+        this class.
+
+        :param: custom_variables: a dict {'key': 'value'}
+        """
 
         if price_cents is None or price_cents <= 0:
             raise errors.IuguSubscriptionsException(value="price_cents must be " \
                                          "greater than 0")
 
         credits_based = self.credits_based
-        custom_data = [] # used to extend custom_variables in data_set()
-        for k, v in custom_variables.items():
-            custom_data.append(("custom_variables[][name]", k.lower()))
-            custom_data.append(("custom_variables[][value]", v))
+
+        if custom_variables:
+            assert isinstance(custom_variables, dict), "Required a dict"
+            custom_data = self.custom_variables_list(custom_variables)
 
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
@@ -425,7 +438,7 @@ class SubscriptionCreditsBased(IuguSubscription):
 
     def set(self, sid, expires_at=None, subitems=None, suspended=None,
             skip_charge=None, price_cents=None, credits_cycle=None,
-            credits_min=None, **custom_variables):
+            credits_min=None, custom_variables=None):
         """
         Changes an existent subscription no credit_based
 
@@ -433,7 +446,9 @@ class SubscriptionCreditsBased(IuguSubscription):
         """
         urn = "/v1/subscriptions/{sid}".format(sid=sid)
         credits_based = self.credits_based
-        custom_data = self.custom_variables_list(custom_variables)
+        if custom_variables:
+            assert isinstance(custom_variables, dict), "Required a dict"
+            custom_data = self.custom_variables_list(custom_variables)
         kwargs_local = locals().copy()
         kwargs_local.pop('self')
         self.data = kwargs_local
@@ -455,14 +470,15 @@ class SubscriptionCreditsBased(IuguSubscription):
 
         kwargs = {}
         # TODO: to improve this ineffective approach.
-        # Currently this check if the set's parameters was passed
+        # Currently this check if the set's parameters was passed. If changes
+        # occurs in set() to revise this k in if used to mount kwargs
         for k, v in self.__dict__.items():
             if v is not None:
                 if  k == "expires_at" or \
-                    k == "subitems" or k == "custom_variables" or \
-                    k == "suspended" or k == "skip_charge" or \
-                    k == "price_cents" or k == "credits_cycle" or \
-                    k == "credits_min":
+                    k == "subitems" or k == "suspended" or \
+                    k == "skip_charge" or k == "price_cents" or \
+                    k == "credits_cycle" or k == "credits_min" or \
+                    k == "custom_variables" :
                     kwargs[k] = v
                     last_valid_k = k
 

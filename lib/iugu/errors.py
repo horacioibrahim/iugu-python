@@ -1,5 +1,21 @@
 # coding: utf-8
 
+class IuguConfigException(BaseException):
+
+    def __init__(self, value="Required environment variable IUGU_API_TOKEN"):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+class IuguConfigTestsErrors(BaseException):
+
+    def __init__(self, value="Required environment variables"):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
 class IuguPaymentMethodException(BaseException):
 
     def __init__(self, value="Required customer_id must not be blank or None"):

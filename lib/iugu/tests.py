@@ -2,7 +2,7 @@
 
 __author__ = 'horacioibrahim'
 
-import unittest
+import unittest, os
 from time import sleep, ctime, time
 from random import randint
 from hashlib import md5
@@ -12,14 +12,25 @@ from types import StringType
 import merchant, customers, config, invoices, errors, plans, subscriptions
 
 
+def check_tests_environment():
+    """
+    For tests is need environment variables to instantiate merchant. Or
+    Edit tests file to instantiate merchant.IuguMerchant(account_id=YOUR_ID)
+    """
+    try:
+        global ACCOUNT_ID
+        ACCOUNT_ID = os.environ["ACCOUNT_ID"]
+    except KeyError:
+        raise errors.IuguConfigTestsErrors("Only for tests is required an environment " \
+                            "variable ACCOUNT_ID or edit file tests.py")
+
 class TestMerchant(unittest.TestCase):
 
+    check_tests_environment()
     def setUp(self):
-        self.API_TOKEN_TEST = config.API_TOKEN_TEST
-        self.EMAIL_CUSTOMER  = config.ACCOUNT_EMAIL
-        self.client = merchant.IuguMerchant(account_id=config.ACCOUNT_ID,
-                                       api_mode_test=True,
-                                       api_token=self.API_TOKEN_TEST)
+        self.EMAIL_CUSTOMER  = "anyperson@ap.com"
+        self.client = merchant.IuguMerchant(account_id=ACCOUNT_ID,
+                                       api_mode_test=True)
 
     def tearDown(self):
         pass
@@ -76,7 +87,7 @@ class TestCustomer(unittest.TestCase):
         consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         c = consumer.create(name="Mario Lago", notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
         c.remove()
         self.assertEqual(c.custom_variables[0]['name'], "local")
         self.assertEqual(c.custom_variables[0]['value'], "cup")
@@ -93,7 +104,7 @@ class TestCustomer(unittest.TestCase):
         consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
         c = consumer.set(consumer_new.id, name="Lago Mario")
         consumer_new.remove()
         self.assertEqual(c.name, "Lago Mario")
@@ -102,7 +113,7 @@ class TestCustomer(unittest.TestCase):
         consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
 
         # Edit info
         consumer_new.name = "Ibrahim Horacio"
@@ -117,7 +128,7 @@ class TestCustomer(unittest.TestCase):
         consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
         consumer.delete(consumer_new.id)
         self.assertRaises(errors.IuguGeneralException, consumer.get,
                                 consumer_new.id)
@@ -126,7 +137,7 @@ class TestCustomer(unittest.TestCase):
         consumer = customers.IuguCustomer(api_mode_test=True,
                                          email=self.random_user_email)
         consumer_new = consumer.create(name="Mario Lago", notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
 
         r = consumer_new.remove()
         self.assertRaises(errors.IuguGeneralException, consumer.get,
@@ -140,26 +151,24 @@ class TestCustomerLists(unittest.TestCase):
         number = randint(1, 50)
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
-        self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
 
         self.c = customers.IuguCustomer(api_mode_test=True,
-                                  api_token=self.API_TOKEN_TEST,
                                   email=self.random_user_email)
 
         # creating customers for tests with lists
         p1, p2, p3 = "Andrea", "Bruna", "Carol"
         self.one = self.c.create(name=p1, notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
 
         # I'm not happy with it (sleep), but was need. This certainly occurs because
         # time data is not a timestamp.
         sleep(1)
         self.two = self.c.create(name=p2, notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
         sleep(1)
         self.three = self.c.create(name=p3, notes="It's the man",
-                                     local="cup")
+                                     custom_variables={'local':'cup'})
         sleep(1)
 
         self.p1, self.p2, self.p3 = p1, p2, p3
@@ -265,7 +274,6 @@ class TestCustomerPayments(unittest.TestCase):
         number = randint(1, 50)
         hash_md5.update(str(number))
         email = "{email}@test.com".format(email=hash_md5.hexdigest())
-        self.API_TOKEN_TEST = config.API_TOKEN_TEST
         self.random_user_email = email
         self.client = customers.IuguCustomer(email="test@testmail.com")
         self.customer = self.client.create()
@@ -511,14 +519,15 @@ class TestInvoice(unittest.TestCase):
         self.assertIsNotNone(self.invoice.id)
 
     def test_invoice_create_with_custom_variables_in_create(self):
-        invoice = self.invoice_obj.create(draft=True, city="Brasilia")
+        invoice = self.invoice_obj.create(draft=True,
+                                          custom_variables={'city': 'Brasilia'})
         self.assertEqual(invoice.custom_variables[0]["name"], "city")
         self.assertEqual(invoice.custom_variables[0]["value"], "Brasilia")
         invoice.remove()
 
     def test_invoice_create_with_custom_variables_in_set(self):
         invoice = self.invoice_obj.set(invoice_id=self.invoice.id,
-                                       city="Brasilia")
+                                       custom_variables={'city': 'Brasilia'})
         self.assertEqual(invoice.custom_variables[0]["name"], "city")
         self.assertEqual(invoice.custom_variables[0]["value"], "Brasilia")
 
@@ -1154,7 +1163,7 @@ class TestSubscriptions(unittest.TestCase):
         p_obj = subscriptions.IuguSubscription()
         subscription_new = p_obj.create(self.customer.id,
                                         self.plan_new.identifier,
-                                        city="Recife")
+                                        custom_variables={'city':'Recife'})
         self.assertEqual(subscription_new.custom_variables[0]["name"], "city")
         self.assertEqual(subscription_new.custom_variables[0]["value"], "Recife")
         self.clean_invoices(subscription_new.recent_invoices)
@@ -1163,7 +1172,7 @@ class TestSubscriptions(unittest.TestCase):
     def test_subscription_set_with_custom_variables(self):
         p_obj = subscriptions.IuguSubscription()
         subscription_new = p_obj.set(sid=self.subscription.id,
-                                     city="Recife")
+                                     custom_variables={'city':'Recife'})
         self.assertEqual(subscription_new.custom_variables[0]["name"], "city")
         self.assertEqual(subscription_new.custom_variables[0]["value"], "Recife")
         # self.clean_invoices(subscription_new.recent_invoices)
@@ -1399,7 +1408,7 @@ class TestSubscriptions(unittest.TestCase):
         # Test if price_cents changed
         subscription = subscriptions.SubscriptionCreditsBased().\
                 create(self.customer.id, credits_cycle=2, price_cents=10,
-                       city="Recife")
+                       custom_variables={'city':"Recife"})
         self.assertEqual(subscription.custom_variables[0]['name'], "city")
         self.assertEqual(subscription.custom_variables[0]['value'], "Recife")
         self.clean_invoices(subscription.recent_invoices)
@@ -1410,7 +1419,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription = subscriptions.SubscriptionCreditsBased().\
                 create(self.customer.id, credits_cycle=2, price_cents=10)
         subscription = subscriptions.SubscriptionCreditsBased().\
-                    set(subscription.id, city="Madrid")
+                    set(subscription.id, custom_variables={'city':"Madrid"})
         self.assertEqual(subscription.custom_variables[0]['name'], "city")
         self.assertEqual(subscription.custom_variables[0]['value'], "Madrid")
         self.clean_invoices(subscription.recent_invoices)

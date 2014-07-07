@@ -1,6 +1,7 @@
 # coding: utf-8
 __author__ = 'horacioibrahim'
 
+import os, sys
 from httplib import HTTPSConnection, CannotSendRequest, BadStatusLine
 from urllib import urlencode
 from json import load as json_load
@@ -17,8 +18,11 @@ class IuguApi(object):
     api_user:
     api_mode_test:
     """
-
-    API_TOKEN = config.API_TOKEN
+    try:
+        API_TOKEN = os.environ["IUGU_API_TOKEN"] #config.API_TOKEN
+    except KeyError:
+        raise errors.IuguConfigException("Required environment variable " \
+                        "IUGU_API_TOKEN")
 
     def __init__(self, **options):
         self.account_id = options.get('account_id')
@@ -37,10 +41,7 @@ class IuguApi(object):
         if self.api_mode_test is True:
             return "true"
 
-        if self.api_mode_test is False:
-            return "false"
-
-        return str(config.API_MODE_TEST).lower()
+        return "false"
 
     def custom_variables_list(self, custom_variables):
         """Unpacking dictionary of keywords arguments and returns a list with
