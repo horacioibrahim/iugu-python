@@ -3,6 +3,7 @@
 __author__ = 'horacioibrahim'
 
 import unittest, os
+import datetime
 from time import sleep, ctime, time
 from random import randint
 from hashlib import md5
@@ -26,7 +27,7 @@ def check_tests_environment():
 
 class TestMerchant(unittest.TestCase):
 
-    check_tests_environment()
+    check_tests_environment() # Checks if enviroment variables defined
     def setUp(self):
         self.EMAIL_CUSTOMER  = "anyperson@ap.com"
         self.client = merchant.IuguMerchant(account_id=ACCOUNT_ID,
@@ -51,13 +52,11 @@ class TestMerchant(unittest.TestCase):
                                                '12', '2010', '123')
         charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token)
         self.assertEqual(charge.is_success(), True)
-        invoices.IuguInvoice().remove(invoice_id=charge.invoice_id)
 
-    def test_create_charge_blank_slip(self):
-        item = merchant.Item("Produto Blank Slip", 1, 1000)
+    def test_create_charge_bank_slip(self):
+        item = merchant.Item("Produto Bank Slip", 1, 1000)
         charge = self.client.create_charge(self.EMAIL_CUSTOMER, item)
         self.assertEqual(charge.is_success(), True)
-        invoices.IuguInvoice().remove(invoice_id=charge.invoice_id)
 
 
 class TestCustomer(unittest.TestCase):
@@ -323,6 +322,7 @@ class TestCustomerPayments(unittest.TestCase):
         # Test with user from getitems()
         customers_list = self.client.getitems()
         c_0 = customers_list[0]
+
         instance_payment = c_0.payment.create(description="New payment method",
                                      number='4111111111111111',
                                      verification_value=123,
@@ -446,6 +446,8 @@ class TestCustomerPayments(unittest.TestCase):
 
 
 class TestInvoice(unittest.TestCase):
+    TODAY = datetime.date.today().strftime("%d/%m/%Y")
+    check_tests_environment() # Checks if enviroment variables defined
 
     def setUp(self):
         hash_md5 = md5()
@@ -461,8 +463,13 @@ class TestInvoice(unittest.TestCase):
         item = merchant.Item("Prod 1", 1, 1190)
         self.item = item
         self.invoice_obj = invoices.IuguInvoice(email=self.customer_email,
-                                 item=item, due_date="30/11/2014")
+                                 item=item, due_date=self.TODAY)
         self.invoice = self.invoice_obj.create(draft=True)
+
+        # to tests for refund
+        self.EMAIL_CUSTOMER  = "anyperson@ap.com"
+        self.client = merchant.IuguMerchant(account_id=ACCOUNT_ID,
+                                       api_mode_test=True)
 
     def tearDown(self):
         if self.invoice.id: # if id is None already was removed
@@ -490,7 +497,6 @@ class TestInvoice(unittest.TestCase):
     def test_invoice_with_customer_id(self):
         res = self.invoice_obj.create(customer_id=self.consumer.id)
         self.assertEqual(res.customer_id, self.consumer.id)
-        res.remove() # after because remove() "to zero" field
 
     def test_invoice_create_all_fields_as_draft(self):
         response = self.invoice_obj.create(draft=True, return_url='http://hipy.co/success',
@@ -513,7 +519,9 @@ class TestInvoice(unittest.TestCase):
                             customer_id=self.consumer.id,
                             ignore_due_email=True)
         self.assertTrue(isinstance(response, invoices.IuguInvoice))
-        response.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # response.remove()
 
     def test_invoice_created_check_id(self):
         self.assertIsNotNone(self.invoice.id)
@@ -587,7 +595,7 @@ class TestInvoice(unittest.TestCase):
                                               customer_id=customer_id)
         self.assertEqual(invoice_edited.customer_id, customer_id)
 
-    @unittest.skip("Without return, but the logs could have it")
+    @unittest.skip("without return from API of the field/attribute ignore_due_email")
     def test_invoice_edit_ignore_due_email_with_set(self):
         ignore_due_email = True
         id = self.invoice.id
@@ -600,11 +608,12 @@ class TestInvoice(unittest.TestCase):
     # TODO: test_invoice_edit_credits_with_set(self):
 
     def test_invoice_edit_due_date_with_set(self):
-        due_date = "31/12/2014"
+        due_date = self.TODAY
+        response_from_api = str(datetime.date.today())
         id = self.invoice.id
         invoice_edited = self.invoice_obj.set(invoice_id=id,
                                               due_date=due_date)
-        self.assertEqual(invoice_edited.due_date, u'2014-12-31')
+        self.assertEqual(invoice_edited.due_date, response_from_api)
 
     def test_invoice_edit_items_with_set(self):
         self.invoice.items[0].description = "Prod Fixed Text and Value"
@@ -655,10 +664,15 @@ class TestInvoice(unittest.TestCase):
         self.assertEqual(re_invoice.status, "canceled")
         invoice.remove()
 
-    @unittest.skip("Support only invoice paid") # TODO
+    #@unittest.skip("Support only invoice paid") # TODO
     def test_invoice_refund(self):
-        re_invoice = self.invoice.refund()
-        self.assertEqual(re_invoice.status, "canceled")
+        item = merchant.Item("Produto My Test", 1, 10000)
+        token = self.client.create_payment_token('4111111111111111', 'JA', 'Silva',
+                                               '12', '2010', '123')
+        charge = self.client.create_charge(self.EMAIL_CUSTOMER, item, token=token)
+        invoice = invoices.IuguInvoice.get(charge.invoice_id)
+        re_invoice = invoice.refund()
+        self.assertEqual(re_invoice.status, "refunded")
 
     def test_invoice_getitems(self):
         # wait webservice response time
@@ -671,7 +685,9 @@ class TestInvoice(unittest.TestCase):
         invoice_2 = self.invoice_obj.create()
         sleep(3)
         l = invoices.IuguInvoice.getitems(limit=2)
-        invoice_2.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # invoice_2.remove()
         self.assertEqual(len(l), 2)
 
     def test_invoice_getitems_skip(self):
@@ -683,9 +699,11 @@ class TestInvoice(unittest.TestCase):
         keep_checker = l1[2]
         l2 = invoices.IuguInvoice.getitems(skip=2)
         skipped = l2[0] # after skip 2 the first must be keep_checker
-        invoice_1.remove()
-        invoice_2.remove()
-        invoice_3.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # invoice_1.remove()
+        # invoice_2.remove()
+        # invoice_3.remove()
         self.assertEqual(keep_checker.id, skipped.id)
 
     # TODO: def test_invoice_getitems_created_at_from(self):
@@ -699,14 +717,18 @@ class TestInvoice(unittest.TestCase):
         sleep(3)
         queryset = invoices.IuguInvoice.getitems(query=res.id)
         self.assertEqual(queryset[0].customer_id, res.customer_id)
-        res.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # res.remove()
 
     def test_invoice_getitems_customer_id(self):
         res = self.invoice_obj.create(customer_id=self.consumer.id)
         sleep(3)
         queryset = invoices.IuguInvoice.getitems(query=res.id)
         self.assertEqual(queryset[0].customer_id, res.customer_id)
-        res.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # res.remove()
 
     @unittest.skip("API no support sort (in moment)")
     def test_invoice_getitems_sort(self):
@@ -718,9 +740,11 @@ class TestInvoice(unittest.TestCase):
         keep_checker = l1[2]
         l2 = invoices.IuguInvoice.getitems(limit=3, sort="id")
         skipped = l2[0] # after skip 2 the first must be keep_checker
-        invoice_1.remove()
-        invoice_2.remove()
-        invoice_3.remove()
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund.
+        # invoice_1.remove()
+        # invoice_2.remove()
+        # invoice_3.remove()
         self.assertEqual(keep_checker.id, skipped.id)
 
 
@@ -1088,12 +1112,11 @@ class TestPlans(unittest.TestCase):
         plan_b.remove()
         plan_c.remove()
 
-    @unittest.skip("TODO support this test")
+    #@unittest.skip("TODO support this test")
     # TODO: def test_plan_getitems_filter_updated_since(self):
 
-    @unittest.skip("Sort not work fine. Waiting support of API providers")
-    def test_plan_getitems_filter_sort(self):
-        pass
+    #@unittest.skip("Sort not work fine. Waiting support of API providers")
+    #def test_plan_getitems_filter_sort(self):
 
 
 class TestSubscriptions(unittest.TestCase):
@@ -1103,16 +1126,20 @@ class TestSubscriptions(unittest.TestCase):
         """
         Removes invoices created in backgrounds of tests
         """
-        if recent_invoices:
-            invoice = recent_invoices[0]
-            invoices.IuguInvoice().remove(invoice_id=invoice["id"])
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund. (API CHANGED)
+        #
+        #if recent_invoices:
+        #    invoice = recent_invoices[0]
+        #    invoices.IuguInvoice().remove(invoice_id=invoice["id"])
+        pass
 
     def setUp(self):
         # preparing object...
-        seed = randint(1, 1999)
+        seed = randint(1, 10000)
         md5_hash = md5()
         md5_hash.update(str(seed))
-        plan_id_random = md5_hash.hexdigest()[:10]
+        plan_id_random = md5_hash.hexdigest()[:12]
         plan_name = "Subs Plan %s" % plan_id_random
         name = "Ze %s" % plan_id_random
         email = "{name}@example.com".format(name=plan_id_random)
@@ -1141,10 +1168,16 @@ class TestSubscriptions(unittest.TestCase):
         # But this not remove all invoices due not recognizable behavior
         # as the API no forever return recents_invoices for created
         # invoices
-        if self.subscription.recent_invoices:
-            invoice = self.subscription.recent_invoices[0]
-            invoice_obj = invoices.IuguInvoice.get(invoice["id"])
-            invoice_obj.remove()
+
+        # The comments below was put because API don't exclude
+        # an invoice that was paid. So only does refund. (API CHANGED)
+        #### if self.subscription.recent_invoices:
+        ####    invoice = self.subscription.recent_invoices[0]
+        ####    # to instanciate invoice from list of the invoices returned by API
+        ####    invoice_obj = invoices.IuguInvoice.get(invoice["id"])
+        ####    # The comments below was put because API don't exclude
+        ####    # an invoice that was paid. So only does refund.
+        ####    invoice_obj.remove()
         self.plan_new.remove()
         self.plan_two.remove()
         self.subscription.remove()
@@ -1177,11 +1210,12 @@ class TestSubscriptions(unittest.TestCase):
         self.assertEqual(subscription_new.custom_variables[0]["value"], "Recife")
         # self.clean_invoices(subscription_new.recent_invoices)
 
+    @unittest.skip("API does not support this only_on_charge_success. CHANGED")
     def test_subscription_create_only_on_charge_success_with_payment(self):
         # Test to create subscriptions with charge only
         customer = customers.IuguCustomer().create(name="Pay now",
                                     email="pay_now@local.com")
-        customer.payment.create(description="Payment X",
+        pay = customer.payment.create(description="Payment X",
                                 number="4111111111111111",
                                 verification_value='123',
                                 first_name="Romario", last_name="Baixo",
@@ -1225,7 +1259,7 @@ class TestSubscriptions(unittest.TestCase):
         sub_2 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
         sub_3 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
         sub_4 = client_subscriptions.create(self.customer.id, self.plan_new.identifier)
-        sleep(2) # slower API
+        sleep(3) # slower API
         subscriptions_list = subscriptions.IuguSubscription.getitems(limit=1)
         self.assertEqual(len(subscriptions_list), 1)
         self.assertEqual(subscriptions_list[0].id, sub_4.id)
@@ -1306,7 +1340,7 @@ class TestSubscriptions(unittest.TestCase):
         subscription.remove()
         plan_newest.remove()
 
-    @unittest.skip("This is not support by API. Return not found")
+    @unittest.skip("API does not support. It returns error 'Subscription Not Found'")
     def test_subscription_set_customer_id(self):
         # Test if customer_id changed. Iugu's support (number 782)
         customer = customers.IuguCustomer().create(name="Cortella",

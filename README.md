@@ -40,6 +40,11 @@ python setup.py install
 
 Usage (Quick Start)
 -----
+### Export environment variable IUGU_API_TOKEN ###
+```
+# For linux users:
+export IUGU_API_TOKEN=XXX
+```
 ### Merchant operations ###
 ```
 from iugu.merchant import IuguMerchant, Item
@@ -198,6 +203,3 @@ Known Issues
 ### Date Types ###
 It's need to use date formatted as string "2014-06-05T15:02:40-03:00",
 but in new release date will python date.
-### URN in single local ###
-TODO: to create make_urn([])
-

@@ -171,7 +171,7 @@ class IuguSubscription(base.IuguApi):
 
     def set(self, sid, plan_identifier=None, expires_at=None,
             subitems=None, suspended=None, skip_charge=None,
-            custom_variables=None):
+            custom_variables=None, customer_id=None):
         """
         Changes a subscriptions with based arguments and Returns modified
         subscription of type no credit_based.
@@ -546,4 +546,3 @@ class SubscriptionCreditsBased(IuguSubscription):
 
         response["_type"] = "credit_based"
         return SubscriptionCreditsBased(**response)
-

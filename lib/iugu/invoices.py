@@ -16,7 +16,7 @@ class IuguInvoice(base.IuguApi):
     :attribute status: Accept two option: draft and pending, but can be
     draft, pending, [paid and canceled (internal use)]
     :attribute logs: is instanced a dictionary like JSON
-    :attribute blank_slip: is instanced a dictionary like JSON
+    :attribute bank_slip: is instanced a dictionary like JSON
 
       => http://iugu.com/referencias/api#faturas
     """
@@ -51,13 +51,14 @@ class IuguInvoice(base.IuguApi):
         self.discount = kwargs.get("discount")
         self.refundable = kwargs.get("refundable")
         self.installments = kwargs.get("installments")
-        self.blank_slip = kwargs.get("blank_slip") # TODO: create a class/object.
+        self.bank_slip = kwargs.get("bank_slip") # TODO: create a class/object.
         self.logs = kwargs.get("logs") # TODO: create a class/object
         # TODO: descriptors (getter/setter) for items
         _items = kwargs.get("items")
         self.items = None
 
         if _items:
+            # TODO: list comprehensions
             _list_items = []
             for i in _items:
                 obj_item = merchant.Item(**i)
@@ -323,6 +324,7 @@ class IuguInvoice(base.IuguApi):
                 data.append((key, "asc"))
 
         invoices = self.__conn.get(urn, data)
+        #TODO: list comprehensions
         invoices_objects = []
         for invoice_item in invoices["items"]:
             obj_invoice = IuguInvoice(**invoice_item)
@@ -334,15 +336,14 @@ class IuguInvoice(base.IuguApi):
         """
         Removes an invoice by id or instance and returns None
         """
-        if not invoice_id:
-            if self.id:
-                invoice_id = self.id
-            else:
-                raise errors.IuguSubscriptionsException(value="ID (invoice_id) can't be empty")
+        invoice_id = invoice_id if invoice_id else self.id
+        if invoice_id is None:
+            raise errors.IuguSubscriptionsException(value="ID (invoice_id) can't be empty")
 
         urn = "/v1/invoices/{invoice_id}".format(invoice_id=invoice_id)
         response = self.__conn.delete(urn, [])
         obj = IuguInvoice(**response)
+        # TODO: list comprehensions ?
         if obj:
             for k, v in self.__dict__.items():
                 self.__dict__[k] = None
@@ -352,6 +353,11 @@ class IuguInvoice(base.IuguApi):
         canceled"""
         urn = "/v1/invoices/{invoice_id}/cancel".format(invoice_id=self.id)
 
+        # This below if to avoid a request because the API not allow this operation
+        # but all API can to change theirs behaviors so to allow to cancel
+        # invoices with status difference of "pending".
+        # The approach without if also to raise exception with error from directly
+        # API responses but here the focus is less requests.
         if self.status == "pending":
             response = self.__conn.put(urn, [])
             obj = IuguInvoice(**response)
@@ -380,6 +386,12 @@ class IuguInvoice(base.IuguApi):
           => http://iugu.com/referencias/api#reembolsar-uma-fatura
         """
         urn = "/v1/invoices/{invoice_id}/refund".format(invoice_id=self.id)
+
+        # This below if to avoid a request because the API not allow this operation
+        # but all API can to change theirs behaviors so to allow to refund
+        # invoices with status difference of "paid".
+        # The approach without if also to raise exception with error from directly
+        # API responses but here the focus is less requests.
         if self.status == "paid":
             response = self.__conn.post(urn, [])
             obj = IuguInvoice(**response)
@@ -388,9 +400,3 @@ class IuguInvoice(base.IuguApi):
                 "invoices with status: paid.")
 
         return obj
-
-
-
-
-
-

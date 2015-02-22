@@ -18,15 +18,17 @@ setup(
   package_dir={'': 'lib'},
   scripts=[],
   url='https://github.com/horacioibrahim/iugu-python',
+  download_url='https://github.com/horacioibrahim/iugu-python/tarball/master',
   license='Apache License',
-  description='The Iugu provides a Python REST APIs to create, process and manage payments.',
+  description='This package is an idiomatic python lib to work with Iugu service',
   long_description="""
-The Iugu provides a Python REST APIs to create, process and manage payments.
-
-http://iugu.com/referencias/api - API Reference
+  This iugu-python lib is the more pythonic way to work with webservices of payments
+  iugu.com. This provides python objects to each entity of the service as Subscriptions,
+  Plans, Customers, Invoices, etc.
+  http://iugu.com/referencias/api - API Reference
 """,
   classifiers=[
-    'Development Status :: Production/Stable',
+    'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
     'Natural Language :: English',
     'Operating System :: OS Independent',

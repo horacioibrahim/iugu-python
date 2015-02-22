@@ -1,7 +1,7 @@
 # coding: utf-8
 __author__ = 'horacioibrahim'
 
-import os, sys
+import os
 from httplib import HTTPSConnection, CannotSendRequest, BadStatusLine
 from urllib import urlencode
 from json import load as json_load
@@ -49,6 +49,7 @@ class IuguApi(object):
 
         custom_data = [] # used to extend custom_variables in data_set()
         if isinstance(custom_variables, dict):
+            # TODO: list comprehensions
             for k, v in custom_variables.items():
                 custom_data.append(("custom_variables[][name]", k.lower()))
                 custom_data.append(("custom_variables[][value]", v))

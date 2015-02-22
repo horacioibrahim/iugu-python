@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 __author__ = 'horacioibrahim'
 
 # python-iugu package modules
@@ -146,8 +147,9 @@ class IuguCustomer(base.IuguApi):
                 data.append((key, "asc"))
 
         customers = self.__conn.get(urn, data)
-        customers_objects = []
 
+        #TODO: list comprehensions
+        customers_objects = []
         for customer in customers["items"]:
             obj_customer = IuguCustomer(**customer)
             customers_objects.append(obj_customer)
@@ -155,7 +157,7 @@ class IuguCustomer(base.IuguApi):
         return customers_objects
 
     def delete(self, customer_id=None):
-        """Deletes a customer of instance or by passing an id.
+        """Deletes a customer of instance or by id.
         And return the removed object"""
         data = []
 
@@ -189,13 +191,17 @@ class IuguPaymentMethod(object):
 
     def __init__(self, customer, item_type="credit_card", **kwargs):
         assert isinstance(customer, IuguCustomer), "Customer invalid."
-
+        _data = kwargs.get('data')
         self.customer_id = kwargs.get('customer_id') # useful create Payment by customer ID
         self.customer = customer
         self.description = kwargs.get('description')
         self.item_type = item_type # support only credit_card
-        self.token = kwargs.get('token') # data credit card token
-        self.set_as_default = kwargs.get('set_as_default')
+        if _data:
+            self.token = _data.get('token') # data credit card token
+            self.display_number = _data.get('display_number')
+            self.brand = _data.get('brand')
+            self.holder_name = _data.get('holder_name')
+        # self.set_as_default = kwargs.get('set_as_default')
         self.id = kwargs.get('id')
 
         # constructor payment
@@ -209,7 +215,7 @@ class IuguPaymentMethod(object):
 
     def create(self, customer_id=None, description=None, number=None,
                verification_value=None, first_name=None, last_name=None,
-               month=None, year=None):
+               month=None, year=None, token=None, set_as_default=False):
         """ Creates a payment method for a customer and returns the own class
 
         :param customer_id: id of customer. You can pass in init or here
@@ -242,31 +248,37 @@ class IuguPaymentMethod(object):
 
         # mounting data...
         data.append(("description", self.description))
-        data.append(("item_type", self.item_type ))
+        data.append(("set_as_default", set_as_default))
 
-        if number:
-            self.payment_data.number = number
+        if token:
+            # if has token, card data it isn't need.
+            self.token = token
+            data.append(("token", self.token ))
+        else:
+            data.append(("item_type", self.item_type ))
+            if number:
+                self.payment_data.number = number
 
-        if verification_value:
-            self.payment_data.verification_value = verification_value
+            if verification_value:
+                self.payment_data.verification_value = verification_value
 
-        if first_name:
-            self.payment_data.first_name = first_name
+            if first_name:
+                self.payment_data.first_name = first_name
 
-        if last_name:
-            self.payment_data.last_name = last_name
+            if last_name:
+                self.payment_data.last_name = last_name
 
-        if month:
-            self.payment_data.month = month
+            if month:
+                self.payment_data.month = month
 
-        if year:
-            self.payment_data.year = year
+            if year:
+                self.payment_data.year = year
 
-        if self.payment_data.is_valid():
-            # It's possible create payment method without credit card data.
-            # Therefore this check is need.
-            payment = self.payment_data.to_data()
-            data.extend(payment)
+            if self.payment_data.is_valid():
+                # It's possible create payment method without credit card data.
+                # Therefore this check is need.
+                payment = self.payment_data.to_data()
+                data.extend(payment)
 
         response = self.__conn.post(urn, data)
 
@@ -311,14 +323,16 @@ class IuguPaymentMethod(object):
 
         return payments
 
-    def set(self, payment_id, description, customer_id=None):
-        """Updates/changes payment method with based in ID and customer. And
-        returns object edited.
+    def set(self, payment_id, description, customer_id=None,
+            set_as_default=False):
+        """Updates/changes payment method with based in payment ID and customer.
+        And returns object edited.
 
         HINT: Use save() to modify instances
         """
         data = []
         data.append(("description", description))
+        data.append(("set_as_default", set_as_default))
 
         if customer_id is None:
             customer_id = self.customer.id
@@ -404,5 +418,3 @@ class PaymentTypeCreditCard(object):
             data.append((key, v))
 
         return data
-
-

@@ -17,7 +17,7 @@ class IuguMerchant(base.IuguApi):
 
     def create_payment_token(self, card_number, first_name, last_name,
                              month, year, verification_value, method="credit_card"):
-        """Sends data credit card of a customer and Returns a token
+        """Sends credit_card data of a customer and returns a token
         for payment process without needing to persist personal data
         of customers.
 
