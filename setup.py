@@ -6,12 +6,12 @@ except ImportError:
 
 import sys, os
 from setuptools import find_packages
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
-from iugu.version import __version__
+#sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+#from iugu.version import __version__
 
 setup(
   name='iugu-python',
-  version= __version__,
+  version= '0.9.6',
   author='Horacio Ibrahim',
   author_email='horacioibrahim@gmail.com',
   packages=find_packages('lib'),
