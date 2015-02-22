@@ -1,13 +1,13 @@
 Iugu python API
 ============================================
 
-This package is an idiomatic python lib to work with Iugu service. The lib is compatible with
+This package is the more idiomatic python lib to work with Iugu service. The lib is compatible with
 Iugu API v1
 
 Overview
 --------
 
-This iugu-python lib is the more pythonic way to work with the webservices of payments iugu.com. This provides python objects to each entity of the service as Subscriptions, Plans, Customers, Invoices, etc. http://iugu.com/referencias/api - API Reference 
+This iugu-python lib is the more pythonic way to work with the webservices of payments iugu.com. This provides python objects to each entity of the service as Subscriptions, Plans, Customers, Invoices, etc. http://iugu.com/referencias/api - API Reference
 
 Prerequisites
 -------------
