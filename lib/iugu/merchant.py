@@ -49,6 +49,7 @@ class IuguMerchant(base.IuguApi):
         """
         Creates an invoice and returns a direct charge done.
 
+        :param items: is instance of class of the merchant.Item
         :param token: an instance of Token. It's used to credit card payments.
         If argument token is None it's used to method=bank_slip
         """
@@ -171,6 +172,10 @@ class Address(object):
 
 
 class Item(object):
+    """
+    This class represent a checkout item. It's used to create a charge, mainly,
+    within IuguMerchant class.
+    """
 
     def __init__(self, description, quantity, price_cents, **kwargs):
         self.description = description

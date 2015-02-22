@@ -38,10 +38,8 @@ class IuguApi(object):
         Return string of the boolean
         """
 
-        if self.api_mode_test is True:
-            return "true"
-
-        return "false"
+        mode = "true" if self.api_mode_test is True else "false"
+        return mode
 
     def custom_variables_list(self, custom_variables):
         """Unpacking dictionary of keywords arguments and returns a list with
