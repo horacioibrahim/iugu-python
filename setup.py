@@ -7,7 +7,7 @@ except ImportError:
 import sys, os
 from setuptools import find_packages
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
-from lib.iugu.version import __version__
+from iugu.version import __version__
 
 setup(
   name='iugu-python',
