@@ -6,7 +6,8 @@ from urllib import urlencode
 from urllib2 import urlopen, Request
 
 # python-iugu package modules
-import base, config
+import base
+import config
 
 
 class IuguMerchant(base.IuguApi):
@@ -38,7 +39,7 @@ class IuguMerchant(base.IuguApi):
                 ('data[month]', month), ('data[year]', year),
                 ('data[number]', card_number)]
 
-        data.append(("account_id", self.account_id)) # work less this
+        data.append(("account_id", self.account_id))  # work less this
         data.append(("test", self.is_mode_test()))
         data.append(("method", method))
         token_data = self.__conn.post(urn, data)
@@ -53,8 +54,7 @@ class IuguMerchant(base.IuguApi):
         :param token: an instance of Token. It's used to credit card payments.
         If argument token is None it's used to method=bank_slip
         """
-        # TODO: payer and address support
-        data = [] # data fields of charge. It'll encode
+        data = []  # data fields of charge. It'll encode
         urn = "/v1/charge"
 
         if isinstance(items, list):
@@ -70,6 +70,10 @@ class IuguMerchant(base.IuguApi):
             data.append(("token", token_id))
         else:
             data.append(("method", "bank_slip"))
+
+        if payer is not None:
+            assert type(payer) is Payer
+            data.extend(payer.to_data())
 
         data.append(("email", consumer_email))
         results = self.__conn.post(urn, data)
@@ -119,6 +123,7 @@ class Token(object):
     This class is representation of payment method to API.
 
     """
+
     def __init__(self, token_data):
         self.token_data = token_data
 
@@ -159,6 +164,26 @@ class Payer(object):
         if isinstance(address, Address):
             self.address = address
 
+    def to_data(self):
+        """
+        Returns tuples to encode with urllib.urlencode
+        """
+        as_tuple = []
+        key = "payer"
+
+        as_tuple.append(("{payer}[cpf_cnpj]".format(
+            payer=key), self.cpf_cnpj))
+        as_tuple.append(("{payer}[name]".format(payer=key), self.name))
+        as_tuple.append(("{payer}[email]".format(payer=key), self.email))
+
+        if self.address:
+            as_tuple.append(("{payer}[address.zip_code]".format(
+                payer=key), self.address.zip_code))
+            as_tuple.append(("{payer}[address.number]".format(
+                payer=key), self.address.number))
+
+        return as_tuple
+
 
 class Address(object):
 
@@ -180,13 +205,13 @@ class Item(object):
     def __init__(self, description, quantity, price_cents, **kwargs):
         self.description = description
         self.quantity = quantity
-        self.price_cents = price_cents # must be integer 10.90 => 1090
+        self.price_cents = price_cents  # must be integer 10.90 => 1090
         self.id = kwargs.get("id")
         self.created_at = kwargs.get("created_at")
         self.updated_at = kwargs.get("updated_at")
         self.price = kwargs.get("price")
-        #useful for subscriptions subitems
-        self.recurrent = kwargs.get("recurrent") # boolean
+        # useful for subscriptions subitems
+        self.recurrent = kwargs.get("recurrent")  # boolean
         self.total = kwargs.get("total")
         # command for eliminate an item
         self.destroy = None
@@ -202,7 +227,7 @@ class Item(object):
         key = "items"
 
         if is_subscription is True:
-            key = "subitems" # run to adapt the API subscription
+            key = "subitems"  # run to adapt the API subscription
 
         if self.id:
             as_tuple.append(("{items}[][id]".format(items=key), self.id))
@@ -224,7 +249,7 @@ class Item(object):
             value_destroy = str(self.destroy)
             value_destroy = value_destroy.lower()
             as_tuple.append(("{items}[][_destroy]".format(items=key),
-                            value_destroy))
+                             value_destroy))
 
         return as_tuple
 
@@ -252,7 +277,7 @@ class Transfers(object):
         """
         To send amount_cents to receiver_id
         """
-        data =[]
+        data = []
         data.append(("receiver_id", receiver_id))
         data.append(("amount_cents", amount_cents))
         response = self.__conn.post(self.__urn, data)
